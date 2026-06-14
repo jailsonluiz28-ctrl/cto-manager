@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+
+    <title>Lista de CTOs</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+<div class="container mt-5">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <h2>📦 CTOs Cadastradas</h2>
+
+        <div>
+
+            <a href="/ctos/exportar/excel/"
+               class="btn btn-success">
+                Excel
+            </a>
+
+            <a href="/ctos/exportar/pdf/"
+               class="btn btn-danger">
+                PDF
+            </a>
+
+            <a href="/"
+               class="btn btn-secondary">
+                Dashboard
+            </a>
+
+        </div>
+
+    </div>
+
+    <div class="card mb-4">
+
+        <div class="card-body">
+
+            <form method="GET">
+
+                <div class="row">
+
+                    <div class="col-md-10">
+
+                        <input
+                            type="text"
+                            name="busca"
+                            class="form-control"
+                            placeholder="Buscar por nome, rua ou tipo"
+                            value="{{ busca }}"
+                        >
+
+                    </div>
+
+                    <div class="col-md-2">
+
+                        <button
+                            class="btn btn-primary w-100">
+
+                            Buscar
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+    <div class="row mt-4 mb-4">
+
+        <div class="col-md-3">
+            <div class="card bg-primary text-white shadow">
+                <div class="card-body text-center">
+                    <h5>Total de Portas</h5>
+                    <h2>{{ total_portas }}</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-danger text-white shadow">
+                <div class="card-body text-center">
+                    <h5>Portas Ocupadas</h5>
+                    <h2>{{ total_ocupadas }}</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-success text-white shadow">
+                <div class="card-body text-center">
+                    <h5>Portas Livres</h5>
+                    <h2>{{ total_livres }}</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-dark text-white shadow">
+                <div class="card-body text-center">
+                    <h5>Taxa de Ocupação</h5>
+                    <h2>{{ taxa_ocupacao }}%</h2>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="row mt-4 mb-4">
+
+        <div class="col-md-6">
+
+            <div class="card shadow">
+
+                <div class="card-header bg-primary text-white">
+                    <h5>📊 Ocupação Geral</h5>
+                </div>
+
+                <div class="card-body">
+
+                    <canvas id="graficoPizza"></canvas>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-6">
+
+            <div class="card shadow">
+
+                <div class="card-header bg-success text-white">
+                    <h5>🏆 Top CTOs</h5>
+                </div>
+
+                <div class="card-body">
+
+                    <canvas id="graficoBarras"></canvas>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="card shadow mt-4 mb-4">
+
+        <div class="card-header bg-dark text-white">
+
+            <h4>🏆 Ranking de Ocupação das CTOs</h4>
+
+        </div>
+
+        <div class="card-body">
+
+            <div class="table-responsive">
+
+                <table class="table table-striped table-hover">
+
+                    <thead class="table-dark">
+
+                        <tr>
+
+                            <th>Posição</th>
+
+                            <th>CTO</th>
+
+                            <th>Rua</th>
+
+                            <th>Ocupação</th>
+
+                            <th>Percentual</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        {% for item in ranking %}
+
+                        <tr>
+
+                            <td>
+
+                                {% if forloop.counter == 1 %}
+                                    🥇
+                                {% elif forloop.counter == 2 %}
+                                    🥈
+                                {% elif forloop.counter == 3 %}
+                                    🥉
+                                {% else %}
+                                    {{ forloop.counter }}º
+                                {% endif %}
+
+                            </td>
+
+                            <td>
+
+                                <a href="/ctos/{{ item.cto.id }}/">
+
+                                    {{ item.cto.nome }}
+
+                                </a>
+
+                            </td>
+
+                            <td>
+
+                                {{ item.cto.rua }}
+
+                            </td>
+
+                            <td>
+
+                                {{ item.cto.portas_ocupadas }}/{{ item.cto.portas_total }}
+
+                            </td>
+
+                            <td>
+
+                                {{ item.percentual }}%
+
+                            </td>
+
+                        </tr>
+
+                        {% empty %}
+
+                        <tr>
+
+                            <td colspan="5" class="text-center">
+
+                                Nenhuma CTO encontrada.
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="card">
+
+        <div class="card-body">
+
+            <div class="table-responsive">
+
+                <table class="table table-striped table-hover">
+
+                    <thead class="table-dark">
+
+                        <tr>
+
+                            <th>CTO</th>
+
+                            <th>Rua</th>
+
+                            <th>Tipo</th>
+
+                            <th>Totais</th>
+
+                            <th>Ocupadas</th>
+
+                            <th>Livres</th>
+
+                            <th>Status</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        {% for cto in ctos %}
+
+                        <tr>
+
+                            <td>
+                                <a href="/ctos/{{ cto.id }}/">
+                                    {{ cto.nome }}
+                                </a>
+                            </td>
+
+                            <td>{{ cto.rua }}</td>
+
+                            <td>{{ cto.tipo }}</td>
+
+                            <td>{{ cto.portas_total }}</td>
+
+                            <td>{{ cto.portas_ocupadas }}</td>
+
+                            <td>
+                                {{ cto.portas_total|add:"-"|add:cto.portas_ocupadas }}
+                            </td>
+
+                            <td>
+
+                                {% if cto.ativa %}
+
+                                    <span class="badge bg-success">
+                                        Ativa
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="badge bg-danger">
+                                        Inativa
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+                        </tr>
+
+                        {% empty %}
+
+                        <tr>
+
+                            <td colspan="7"
+                                class="text-center">
+
+                                Nenhuma CTO encontrada.
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+new Chart(document.getElementById('graficoPizza'), {
+
+    type: 'pie',
+
+    data: {
+
+        labels: ['Ocupadas', 'Livres'],
+
+        datasets: [{
+
+            data: [
+                {{ total_ocupadas }},
+                {{ total_livres }}
+            ]
+
+        }]
+    }
+
+});
+
+
+new Chart(document.getElementById('graficoBarras'), {
+
+    type: 'bar',
+
+    data: {
+
+        labels: [
+
+            {% for item in ranking %}
+                "{{ item.cto.nome }}",
+            {% endfor %}
+
+        ],
+
+        datasets: [{
+
+            label: 'Percentual (%)',
+
+            data: [
+
+                {% for item in ranking %}
+                    {{ item.percentual }},
+                {% endfor %}
+
+            ]
+
+        }]
+    },
+
+    options: {
+
+        scales: {
+
+            y: {
+
+                beginAtZero: true,
+                max: 100
+
+            }
+
+        }
+
+    }
+
+});
+
+</script>
+
+</body>
+</html>
