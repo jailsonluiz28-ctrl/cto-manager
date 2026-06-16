@@ -1,8 +1,9 @@
 from django.http import HttpResponse
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models import Q
 
 from .models import CTO
+from .forms import CTOForm
 from clientes.models import Cliente
 
 import openpyxl
@@ -144,6 +145,32 @@ def detalhe_cto(request, cto_id):
             'clientes': clientes,
             'portas_livres': portas_livres,
             'mapa_portas': mapa_portas,
+        }
+    )
+
+
+@login_required
+def nova_cto(request):
+
+    if request.method == 'POST':
+
+        form = CTOForm(request.POST)
+
+        if form.is_valid():
+
+            form.save()
+
+            return redirect('/ctos/')
+
+    else:
+
+        form = CTOForm()
+
+    return render(
+        request,
+        'ctos/nova_cto.html',
+        {
+            'form': form
         }
     )
 

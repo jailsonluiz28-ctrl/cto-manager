@@ -5,6 +5,7 @@ from .views import (
     detalhe_cto,
     exportar_ctos_excel,
     exportar_ctos_pdf,
+    nova_cto,
 )
 
 urlpatterns = [
@@ -12,6 +13,12 @@ urlpatterns = [
         '',
         lista_ctos,
         name='lista_ctos'
+    ),
+
+    path(
+        'nova/',
+        nova_cto,
+        name='nova_cto'
     ),
 
     path(
