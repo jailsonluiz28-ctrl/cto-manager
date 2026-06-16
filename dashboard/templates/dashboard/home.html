@@ -76,9 +76,58 @@
                 🔎 Busca Avançada
             </a>
 
-            <a href="#">
-                📈 Relatórios
-            </a>
+            <div class="dropdown mb-2">
+
+                <a class="dropdown-toggle"
+                   href="#"
+                   role="button"
+                   data-bs-toggle="dropdown">
+
+                    📈 Relatórios
+
+                </a>
+
+                <ul class="dropdown-menu">
+
+                    <li>
+                        <a class="dropdown-item"
+                           href="/clientes/exportar/excel/">
+
+                            👥 Clientes Excel
+
+                        </a>
+                    </li>
+
+                    <li>
+                        <a class="dropdown-item"
+                           href="/clientes/exportar/pdf/">
+
+                            👥 Clientes PDF
+
+                        </a>
+                    </li>
+
+                    <li>
+                        <a class="dropdown-item"
+                           href="/ctos/exportar/excel/">
+
+                            📦 CTOs Excel
+
+                        </a>
+                    </li>
+
+                    <li>
+                        <a class="dropdown-item"
+                           href="/ctos/exportar/pdf/">
+
+                            📦 CTOs PDF
+
+                        </a>
+                    </li>
+
+                </ul>
+
+            </div>
 
             <a href="/admin/">
                 ⚙ Administração
@@ -372,6 +421,8 @@ new Chart(clientes, {
     }
 });
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 </html>
