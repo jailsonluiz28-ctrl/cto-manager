@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from django.db.models import Q
+from django.contrib.auth.decorators import login_required
 import unicodedata
 
 from ctos.models import CTO
@@ -19,6 +20,7 @@ def remover_acentos(texto):
     ).lower()
 
 
+@login_required
 def home(request):
 
     total_ctos = CTO.objects.count()

@@ -31,7 +31,10 @@ from reportlab.lib.styles import getSampleStyleSheet
 
 from datetime import datetime
 
+from django.contrib.auth.decorators import login_required
 
+
+@login_required
 def lista_clientes(request):
 
     busca = request.GET.get('busca', '').strip()
@@ -58,6 +61,7 @@ def lista_clientes(request):
     )
 
 
+@login_required
 def detalhe_cliente(request, cliente_id):
 
     cliente = get_object_or_404(
@@ -74,6 +78,7 @@ def detalhe_cliente(request, cliente_id):
     )
 
 
+@login_required
 def novo_cliente(request):
 
     if request.method == 'POST':
@@ -99,6 +104,7 @@ def novo_cliente(request):
     )
 
 
+@login_required
 def portas_disponiveis(request, cto_id):
 
     try:
@@ -137,6 +143,7 @@ def portas_disponiveis(request, cto_id):
         })
 
 
+@login_required
 def exportar_clientes_excel(request):
 
     workbook = openpyxl.Workbook()
@@ -176,6 +183,7 @@ def exportar_clientes_excel(request):
     return response
 
 
+@login_required
 def exportar_clientes_pdf(request):
 
     response = HttpResponse(

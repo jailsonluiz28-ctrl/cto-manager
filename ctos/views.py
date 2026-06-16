@@ -20,7 +20,10 @@ from reportlab.lib.styles import getSampleStyleSheet
 
 from datetime import datetime
 
+from django.contrib.auth.decorators import login_required
 
+
+@login_required
 def lista_ctos(request):
 
     busca = request.GET.get('busca', '').strip()
@@ -89,6 +92,7 @@ def lista_ctos(request):
     )
 
 
+@login_required
 def detalhe_cto(request, cto_id):
 
     cto = get_object_or_404(
@@ -144,6 +148,7 @@ def detalhe_cto(request, cto_id):
     )
 
 
+@login_required
 def exportar_ctos_excel(request):
 
     workbook = openpyxl.Workbook()
@@ -305,6 +310,7 @@ def exportar_ctos_excel(request):
     return response
 
 
+@login_required
 def exportar_ctos_pdf(request):
 
     response = HttpResponse(
