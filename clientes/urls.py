@@ -7,6 +7,8 @@ from .views import (
     portas_disponiveis,
     exportar_clientes_excel,
     exportar_clientes_pdf,
+    editar_cliente,
+    excluir_cliente,
 )
 
 urlpatterns = [
@@ -26,6 +28,18 @@ urlpatterns = [
         '<int:cliente_id>/',
         detalhe_cliente,
         name='detalhe_cliente'
+    ),
+
+    path(
+        '<int:cliente_id>/editar/',
+        editar_cliente,
+        name='editar_cliente'
+    ),
+
+    path(
+        '<int:cliente_id>/excluir/',
+        excluir_cliente,
+        name='excluir_cliente'
     ),
 
     path(

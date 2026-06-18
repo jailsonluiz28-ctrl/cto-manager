@@ -256,3 +256,63 @@ def exportar_clientes_pdf(request):
     documento.build(elementos)
 
     return response
+
+
+@login_required
+def editar_cliente(request, cliente_id):
+
+    cliente = get_object_or_404(
+        Cliente,
+        id=cliente_id
+    )
+
+    if request.method == 'POST':
+
+        form = ClienteForm(
+            request.POST,
+            instance=cliente
+        )
+
+        if form.is_valid():
+
+            form.save()
+
+            return redirect('/clientes/')
+
+    else:
+
+        form = ClienteForm(
+            instance=cliente
+        )
+
+    return render(
+        request,
+        'clientes/editar_cliente.html',
+        {
+            'form': form,
+            'cliente': cliente,
+        }
+    )
+
+
+@login_required
+def excluir_cliente(request, cliente_id):
+
+    cliente = get_object_or_404(
+        Cliente,
+        id=cliente_id
+    )
+
+    if request.method == 'POST':
+
+        cliente.delete()
+
+        return redirect('/clientes/')
+
+    return render(
+        request,
+        'clientes/excluir_cliente.html',
+        {
+            'cliente': cliente,
+        }
+    )

@@ -72,12 +72,32 @@
 
     <div class="mt-4">
 
-        <a href="/clientes/exportar/pdf/" class="btn btn-danger">
-            📄 Exportar PDF
+        <a href="/clientes/{{ cliente.id }}/editar/"
+           class="btn btn-warning">
+
+            ✏️ Editar Cliente
+
         </a>
 
-        <a href="/clientes/exportar/excel/" class="btn btn-success">
+        <a href="/clientes/{{ cliente.id }}/excluir/"
+           class="btn btn-danger">
+
+            🗑️ Excluir Cliente
+
+        </a>
+
+        <a href="/clientes/exportar/pdf/"
+           class="btn btn-danger">
+
+            📄 Exportar PDF
+
+        </a>
+
+        <a href="/clientes/exportar/excel/"
+           class="btn btn-success">
+
             📊 Exportar Excel
+
         </a>
 
     </div>
