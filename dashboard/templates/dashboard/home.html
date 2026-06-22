@@ -152,9 +152,13 @@
 
             {% endif %}
 
+            {% if eh_admin or eh_operador %}
+
             <a href="/ctos/">
                 📦 CTOs
             </a>
+
+            {% endif %}
 
             {% if eh_admin or eh_operador %}
 
@@ -333,18 +337,6 @@
                         <h5>Rede Ocupada</h5>
 
                         <h2>{{ percentual_ocupado }}%</h2>
-
-                    </div>
-
-                </div>
-
-                <div class="col-md-4">
-
-                    <div class="card bg-dark text-white p-3">
-
-                        <h5>CTOs Lotadas</h5>
-
-                        <h2>{{ quantidade_ctos_lotadas }}</h2>
 
                     </div>
 
