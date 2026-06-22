@@ -26,4 +26,9 @@ urlpatterns = [
     path('clientes/', include('clientes.urls')),
 
     path('ctos/', include('ctos.urls')),
+
+    path(
+        'sistema/',
+        include('sistema.urls')
+    ),
 ]

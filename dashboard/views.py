@@ -1,10 +1,20 @@
 from django.shortcuts import render
-from django.db.models import Q
+from django.db.models import Q, F
 from django.contrib.auth.decorators import login_required
+from django.db import models
 import unicodedata
+import os
+import shutil
+
+from django.conf import settings
+from django.http import FileResponse
+from django.contrib.admin.views.decorators import staff_member_required
 
 from ctos.models import CTO
-from clientes.models import Cliente
+from clientes.models import (
+    Cliente,
+    HistoricoMovimentacao
+)
 
 
 def remover_acentos(texto):
@@ -32,16 +42,77 @@ def home(request):
     ).count()
 
     portas_livres = 0
+    portas_totais = 0
 
     for cto in CTO.objects.all():
+
+        portas_totais += cto.portas_total
+
         portas_livres += (
             cto.portas_total - cto.portas_ocupadas
         )
+
+    portas_ocupadas_total = (
+        portas_totais - portas_livres
+    )
+
+    if portas_totais > 0:
+
+        percentual_ocupado = round(
+            (portas_ocupadas_total / portas_totais) * 100,
+            1
+        )
+
+        percentual_livre = round(
+            (portas_livres / portas_totais) * 100,
+            1
+        )
+
+    else:
+
+        percentual_ocupado = 0
+
+        percentual_livre = 0
+
+
+    ctos_lotadas = CTO.objects.filter(
+        portas_ocupadas=models.F('portas_total')
+    )
+
+    quantidade_ctos_lotadas = ctos_lotadas.count()
+
+    ultimas_movimentacoes = (
+        HistoricoMovimentacao.objects
+        .all()
+        .order_by('-data')[:10]
+    )
+
+    ctos_uma_vaga = 0
+
+    ctos_disponiveis = 0
+
+    for cto in CTO.objects.all():
+
+        vagas = (
+            cto.portas_total
+            -
+            cto.portas_ocupadas
+        )
+
+        if vagas == 1:
+
+            ctos_uma_vaga += 1
+
+        elif vagas > 1:
+
+            ctos_disponiveis += 1
 
     busca = request.GET.get('busca', '').strip()
 
     cto_encontrada = None
     ctos_encontradas = []
+    mapas_ctos = []
+    total_vagas_rua = 0
 
     clientes_cto = []
 
@@ -110,6 +181,70 @@ def home(request):
                 cto=cto_encontrada
             ).order_by('porta')
 
+            for cto in ctos_encontradas:
+
+                clientes_da_cto = Cliente.objects.filter(
+                    cto=cto
+                )
+
+                vagas_livres = (
+                    cto.portas_total
+                    -
+                    cto.portas_ocupadas
+                )
+
+                total_vagas_rua += vagas_livres
+
+                portas = []
+
+                for numero in range(
+                    1,
+                    cto.portas_total + 1
+                ):
+
+                    ocupada = clientes_da_cto.filter(
+                        porta=numero
+                    ).exists()
+
+                    portas.append({
+                        'numero': numero,
+                        'ocupada': ocupada
+                    })
+
+                clientes_detalhes = []
+
+                for numero in range(
+                    1,
+                    cto.portas_total + 1
+                ):
+
+                    cliente = clientes_da_cto.filter(
+                        porta=numero
+                    ).first()
+
+                    if cliente:
+
+                        clientes_detalhes.append({
+                            'porta': numero,
+                            'cliente': cliente.nome,
+                            'ocupada': True
+                        })
+
+                    else:
+
+                        clientes_detalhes.append({
+                            'porta': numero,
+                            'cliente': 'Livre',
+                            'ocupada': False
+                        })
+
+                mapas_ctos.append({
+                    'cto': cto,
+                    'vagas_livres': vagas_livres,
+                    'portas': portas,
+                    'clientes': clientes_detalhes
+                })
+
             portas_livres_cto = (
                 cto_encontrada.portas_total
                 -
@@ -153,9 +288,25 @@ def home(request):
 
             'portas_livres': portas_livres,
 
+            'percentual_ocupado': percentual_ocupado,
+
+            'percentual_livre': percentual_livre,
+
+            'quantidade_ctos_lotadas': quantidade_ctos_lotadas,
+
+            'ctos_uma_vaga': ctos_uma_vaga,
+
+            'ctos_disponiveis': ctos_disponiveis,
+
+            'ctos_lotadas': ctos_lotadas,
+
             'cto_encontrada': cto_encontrada,
 
             'ctos_encontradas': ctos_encontradas,
+
+            'mapas_ctos': mapas_ctos,
+
+            'total_vagas_rua': total_vagas_rua,
 
             'clientes_cto': clientes_cto,
 
@@ -166,5 +317,53 @@ def home(request):
             'clientes_encontrados': clientes_encontrados,
 
             'busca': busca,
+
+            'eh_admin': request.user.groups.filter(
+                name='Administrador'
+            ).exists(),
+
+            'eh_operador': request.user.groups.filter(
+                name='Operador'
+            ).exists(),
+
+            'eh_tecnico': request.user.groups.filter(
+                name='Consulta do Técnico'
+            ).exists(),
+
+            'ultimas_movimentacoes': ultimas_movimentacoes,
         }
+    )
+
+
+@staff_member_required
+def gerar_backup(request):
+
+    banco = settings.BASE_DIR / 'db.sqlite3'
+
+    pasta_backup = settings.BASE_DIR / 'backups'
+
+    os.makedirs(
+        pasta_backup,
+        exist_ok=True
+    )
+
+    from datetime import datetime
+
+    nome_arquivo = (
+        f'backup_'
+        f'{datetime.now().strftime("%Y%m%d_%H%M%S")}'
+        '.sqlite3'
+    )
+
+    destino = pasta_backup / nome_arquivo
+
+    shutil.copy2(
+        banco,
+        destino
+    )
+
+    return FileResponse(
+        open(destino, 'rb'),
+        as_attachment=True,
+        filename=nome_arquivo
     )

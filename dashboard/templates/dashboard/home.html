@@ -9,14 +9,20 @@
 
     <style>
         body {
-            background-color: #f5f6fa;
+            background: #f4f7fc;
+            font-family: Segoe UI, Tahoma, Geneva, Verdana, sans-serif;
         }
 
         .sidebar {
             min-height: 100vh;
-            background: #0d1b52;
+            background: linear-gradient(
+                180deg,
+                #0d1b52,
+                #152d7a
+            );
             color: white;
             padding-top: 20px;
+            box-shadow: 3px 0 15px rgba(0,0,0,.15);
         }
 
         .sidebar a {
@@ -24,34 +30,64 @@
             text-decoration: none;
             display: block;
             padding: 12px;
-            border-radius: 8px;
+            border-radius: 10px;
             margin-bottom: 5px;
+            transition: .3s;
         }
 
         .sidebar a:hover {
-            background-color: rgba(255,255,255,0.15);
+            background: rgba(255,255,255,.15);
+            transform: translateX(5px);
         }
 
-        .dropdown-menu a {
-            color: #212529 !important;
-            padding: 10px 15px;
-        }
-
-        .dropdown-menu a:hover {
-            background-color: #f1f1f1;
-            color: #000 !important;
+        .dashboard-header {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,.08);
         }
 
         .card-dashboard {
             border: none;
-            border-radius: 15px;
+            border-radius: 18px;
             color: white;
+            transition: .3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,.08);
+        }
+
+        .card-dashboard:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-dashboard h2 {
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .card-dashboard h5 {
+            font-size: 14px;
+            opacity: .9;
         }
 
         .porta-card {
-            border-radius: 12px;
+            border-radius: 15px;
             font-weight: bold;
             min-height: 120px;
+        }
+
+        .alert-card {
+            border-radius: 15px;
+            border: none;
+        }
+
+        @media(max-width:768px) {
+            .sidebar {
+                min-height: auto;
+            }
+            .card-dashboard {
+                margin-bottom: 15px;
+            }
         }
     </style>
 </head>
@@ -68,80 +104,184 @@
                 CTO SYSTEM
             </h3>
 
+            <div class="text-center mb-4">
+
+                <small>
+
+                    Logado como:
+
+                    <br>
+
+                    <strong>
+                        {{ request.user.username }}
+                    </strong>
+
+                </small>
+
+            </div>
+
+            {% if eh_admin or eh_operador %}
+
             <a href="/">📊 Dashboard</a>
 
-            <a href="/ctos/nova/">
+            {% endif %}
+
+            <a href="/ctos/">
                 📦 CTOs
             </a>
+
+            {% if eh_admin or eh_operador %}
 
             <a href="/clientes/">
                 👥 Clientes
             </a>
 
+            {% endif %}
+
             <a href="#busca">
                 🔎 Busca Avançada
             </a>
 
-            <a href="#">
-                📈 Relatórios
-            </a>
+            {% if eh_admin %}
 
-            <div style="margin-left:20px; margin-bottom:15px;">
+            <hr>
 
-                <a href="/clientes/exportar/excel/">
-                    📊 Clientes Excel
-                </a>
-
-                <a href="/clientes/exportar/pdf/">
-                    📄 Clientes PDF
-                </a>
-
-                <a href="/ctos/exportar/excel/">
-                    📊 CTOs Excel
-                </a>
-
-                <a href="/ctos/exportar/pdf/">
-                    📄 CTOs PDF
-                </a>
-
-            </div>
+            <h6 class="text-center text-light">
+                ADMINISTRAÇÃO
+            </h6>
 
             <a href="/admin/">
                 ⚙ Administração
             </a>
 
+            <a href="/sistema/usuarios/">
+                👤 Usuários
+            </a>
+
+            <a href="/clientes/historico/">
+                📋 Histórico
+            </a>
+
+            <a href="/clientes/exportar/excel/">
+                📊 Clientes Excel
+            </a>
+
+            <a href="/clientes/exportar/pdf/">
+                📄 Clientes PDF
+            </a>
+
+            <a href="/ctos/exportar/excel/">
+                📊 CTOs Excel
+            </a>
+
+            <a href="/ctos/exportar/pdf/">
+                📄 CTOs PDF
+            </a>
+
+            <a href="/sistema/backups/">
+                💾 Backup do Sistema
+            </a>
+
+            <a href="/sistema/restaurar/">
+                ♻ Restaurar Backup
+            </a>
+
+            {% endif %}
+
+            <hr>
+
+            <form action="/logout/" method="post">
+
+                {% csrf_token %}
+
+                <button
+                    type="submit"
+                    class="btn btn-danger w-100"
+                >
+                    🚪 Sair
+                </button>
+
+            </form>
+
         </div>
 
         <div class="col-md-10 p-4">
 
-            <h2 class="mb-4">
-                Dashboard
-            </h2>
+            <div class="dashboard-header">
+
+                <div class="row align-items-center">
+
+                    <div class="col-md-8">
+
+                        <h2 class="mb-0">
+
+                            📡 CTO MANAGER PRO
+
+                        </h2>
+
+                        <small class="text-muted">
+
+                            Painel Operacional da Rede
+
+                        </small>
+
+                    </div>
+
+                    <div class="col-md-4 text-end">
+
+                        <strong>
+
+                            👤 {{ request.user.username }}
+
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            {% if quantidade_ctos_lotadas > 0 %}
+
+            <div class="alert alert-danger">
+
+                <strong>
+
+                    🚨 Atenção!
+
+                    Existem {{ quantidade_ctos_lotadas }}
+                    CTO(s) lotada(s).
+
+                </strong>
+
+            </div>
+
+            {% endif %}
 
             <div class="row">
 
-                <div class="col-md-3">
+                <div class="col-xl-3 col-lg-6 col-md-6 col-12 mb-3">
                     <div class="card card-dashboard bg-primary p-3">
                         <h5>Total de CTOs</h5>
                         <h2>{{ total_ctos }}</h2>
                     </div>
                 </div>
 
-                <div class="col-md-3">
+                <div class="col-xl-3 col-lg-6 col-md-6 col-12 mb-3">
                     <div class="card card-dashboard bg-success p-3">
                         <h5>Total de Clientes</h5>
                         <h2>{{ total_clientes }}</h2>
                     </div>
                 </div>
 
-                <div class="col-md-3">
+                <div class="col-xl-3 col-lg-6 col-md-6 col-12 mb-3">
                     <div class="card card-dashboard bg-warning p-3">
                         <h5>CTOs Ocupadas</h5>
                         <h2>{{ ctos_ocupadas }}</h2>
                     </div>
                 </div>
 
-                <div class="col-md-3">
+                <div class="col-xl-3 col-lg-6 col-md-6 col-12 mb-3">
                     <div class="card card-dashboard bg-danger p-3">
                         <h5>Portas Livres</h5>
                         <h2>{{ portas_livres }}</h2>
@@ -149,6 +289,256 @@
                 </div>
 
             </div>
+
+            <div class="row mt-3">
+
+                <div class="col-md-4">
+
+                    <div class="card bg-success text-white p-3">
+
+                        <h5>Rede Livre</h5>
+
+                        <h2>{{ percentual_livre }}%</h2>
+
+                    </div>
+
+                </div>
+
+                <div class="col-md-4">
+
+                    <div class="card bg-danger text-white p-3">
+
+                        <h5>Rede Ocupada</h5>
+
+                        <h2>{{ percentual_ocupado }}%</h2>
+
+                    </div>
+
+                </div>
+
+                <div class="col-md-4">
+
+                    <div class="card bg-dark text-white p-3">
+
+                        <h5>CTOs Lotadas</h5>
+
+                        <h2>{{ quantidade_ctos_lotadas }}</h2>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="row mt-3">
+
+                <div class="col-md-4 mb-3">
+
+                    <div class="card alert-card bg-danger text-white">
+
+                        <div class="card-body">
+
+                            <h5>🚨 CTOs Lotadas</h5>
+
+                            <h2>{{ quantidade_ctos_lotadas }}</h2>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="col-md-4 mb-3">
+
+                    <div class="card alert-card bg-warning">
+
+                        <div class="card-body">
+
+                            <h5>⚠ CTOs com 1 vaga</h5>
+
+                            <h2>{{ ctos_uma_vaga }}</h2>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="col-md-4 mb-3">
+
+                    <div class="card alert-card bg-success text-white">
+
+                        <div class="card-body">
+
+                            <h5>🟢 CTOs Disponíveis</h5>
+
+                            <h2>{{ ctos_disponiveis }}</h2>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="row mt-3">
+
+                <div class="col-md-3">
+
+                    <div class="card card-dashboard bg-info p-3">
+
+                        <h5>Capacidade Total</h5>
+
+                        <h2>{{ portas_livres|add:total_clientes }}</h2>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            {% if quantidade_ctos_lotadas > 0 %}
+
+            <div class="card mt-4 border-danger">
+
+                <div class="card-header bg-danger text-white">
+
+                    🚨 CTOs Lotadas
+
+                </div>
+
+                <div class="card-body">
+
+                    <table class="table">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>CTO</th>
+
+                                <th>Rua</th>
+
+                                <th>Portas</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                        {% for cto in ctos_lotadas %}
+
+                            <tr>
+
+                                <td>
+
+                                    <a href="/?busca={{ cto.nome }}">
+
+                                        {{ cto.nome }}
+
+                                    </a>
+
+                                </td>
+
+                                <td>{{ cto.rua }}</td>
+
+                                <td>
+
+                                    {{ cto.portas_ocupadas }}
+                                    /
+                                    {{ cto.portas_total }}
+
+                                </td>
+
+                            </tr>
+
+                        {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+            {% endif %}
+
+            {% if eh_admin %}
+
+            <div class="card shadow mt-4">
+
+                <div class="card-header bg-dark text-white">
+
+                    <h4 class="mb-0">
+
+                        📋 Últimas Movimentações
+
+                    </h4>
+
+                </div>
+
+                <div class="card-body">
+
+                    <div class="table-responsive">
+
+                        <table class="table table-striped">
+
+                            <thead>
+
+                                <tr>
+
+                                    <th>Data</th>
+
+                                    <th>Usuário</th>
+
+                                    <th>Ação</th>
+
+                                    <th>Observação</th>
+
+                                </tr>
+
+                            </thead>
+
+                            <tbody>
+
+                            {% for mov in ultimas_movimentacoes %}
+
+                                <tr>
+
+                                    <td>
+                                        {{ mov.data|date:"d/m/Y H:i" }}
+                                    </td>
+
+                                    <td>
+                                        {{ mov.usuario }}
+                                    </td>
+
+                                    <td>
+                                        {{ mov.acao }}
+                                    </td>
+
+                                    <td>
+                                        {{ mov.observacao }}
+                                    </td>
+
+                                </tr>
+
+                            {% endfor %}
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            {% endif %}
 
             <div class="row mt-4">
 
@@ -211,6 +601,148 @@
                 </form>
 
             </div>
+
+            {% if mapas_ctos %}
+
+            <div class="card mt-4 p-4">
+
+                <h4>📦 CTOs Encontradas</h4>
+
+                <div class="alert alert-info">
+
+                    <strong>
+
+                        Total de vagas disponíveis na busca:
+
+                        {{ total_vagas_rua }}
+
+                    </strong>
+
+                </div>
+
+                {% for item in mapas_ctos %}
+
+                <div class="border rounded p-3 mb-3">
+
+                    <h5>
+
+                        {{ item.cto.nome }}
+
+                        ({{ item.cto.portas_ocupadas }}/{{ item.cto.portas_total }})
+
+                        <span class="badge bg-primary">
+
+                            {{ item.vagas_livres }} vagas livres
+
+                        </span>
+
+                    </h5>
+
+                    <p>
+
+                        <strong>Rua:</strong>
+
+                        {{ item.cto.rua }}
+
+                    </p>
+
+                    {% for porta in item.portas %}
+
+                        {% if porta.ocupada %}
+
+                            <span class="badge bg-danger">
+
+                                {{ porta.numero }}
+
+                            </span>
+
+                        {% else %}
+
+                            <span class="badge bg-success">
+
+                                {{ porta.numero }}
+
+                            </span>
+
+                        {% endif %}
+
+                    {% endfor %}
+
+                    <hr>
+
+                    <h6>
+                        Clientes da CTO
+                    </h6>
+
+                    <table class="table table-sm">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>Porta</th>
+                                <th>Status</th>
+                                <th>Cliente</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                        {% for cliente in item.clientes %}
+
+                            <tr>
+
+                                <td>
+
+                                    {{ cliente.porta }}
+
+                                </td>
+
+                                <td>
+
+                                    {% if cliente.ocupada %}
+
+                                        <span class="badge bg-danger">
+
+                                            Ocupada
+
+                                        </span>
+
+                                    {% else %}
+
+                                        <span class="badge bg-success">
+
+                                            Livre
+
+                                        </span>
+
+                                    {% endif %}
+
+                                </td>
+
+                                <td>
+
+                                    {{ cliente.cliente }}
+
+                                </td>
+
+                            </tr>
+
+                        {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+                {% endfor %}
+
+            </div>
+
+            {% endif %}
 
             {% if cto_encontrada %}
 

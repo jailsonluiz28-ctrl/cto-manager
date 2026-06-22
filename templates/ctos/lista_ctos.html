@@ -20,6 +20,17 @@
 
         <div>
 
+            {% if eh_admin or eh_operador %}
+
+            <a href="/ctos/nova/"
+               class="btn btn-primary">
+                ➕ Nova CTO
+            </a>
+
+            {% endif %}
+
+            {% if eh_admin %}
+
             <a href="/ctos/exportar/excel/"
                class="btn btn-success">
                 Excel
@@ -29,6 +40,8 @@
                class="btn btn-danger">
                 PDF
             </a>
+
+            {% endif %}
 
             <a href="/"
                class="btn btn-secondary">
@@ -290,6 +303,10 @@
 
                             <th>Status</th>
 
+                            {% if eh_admin or eh_operador %}
+                            <th>Ações</th>
+                            {% endif %}
+
                         </tr>
 
                     </thead>
@@ -301,7 +318,7 @@
                         <tr>
 
                             <td>
-                                <a href="/ctos/{{ cto.id }}/">
+                                <a href="/ctos/{{ cto.id }}/editar/">
                                     {{ cto.nome }}
                                 </a>
                             </td>
@@ -336,13 +353,39 @@
 
                             </td>
 
+                            {% if eh_admin or eh_operador %}
+
+                            <td>
+
+                                <a href="/ctos/{{ cto.id }}/editar/"
+                                   class="btn btn-warning btn-sm">
+
+                                    ✏ Editar
+
+                                </a>
+
+                                {% if eh_admin %}
+
+                                <a href="/ctos/{{ cto.id }}/excluir/"
+                                   class="btn btn-danger btn-sm">
+
+                                    🗑 Excluir
+
+                                </a>
+
+                                {% endif %}
+
+                            </td>
+
+                            {% endif %}
+
                         </tr>
 
                         {% empty %}
 
                         <tr>
 
-                            <td colspan="7"
+                            <td colspan="8"
                                 class="text-center">
 
                                 Nenhuma CTO encontrada.

@@ -9,6 +9,7 @@ from .views import (
     exportar_clientes_pdf,
     editar_cliente,
     excluir_cliente,
+    historico_movimentacoes,
 )
 
 urlpatterns = [
@@ -58,5 +59,11 @@ urlpatterns = [
         'exportar/pdf/',
         exportar_clientes_pdf,
         name='exportar_clientes_pdf'
+    ),
+
+    path(
+        'historico/',
+        historico_movimentacoes,
+        name='historico'
     ),
 ]

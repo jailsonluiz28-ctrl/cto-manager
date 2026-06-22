@@ -12,7 +12,10 @@ from django.http import (
 from django.db.models import Q
 
 from .forms import ClienteForm
-from .models import Cliente
+from .models import (
+    Cliente,
+    HistoricoMovimentacao
+)
 from ctos.models import CTO
 
 import openpyxl
@@ -32,6 +35,12 @@ from reportlab.lib.styles import getSampleStyleSheet
 from datetime import datetime
 
 from django.contrib.auth.decorators import login_required
+
+from accounts.permissoes import (
+    operador_required
+)
+
+from django.contrib.admin.views.decorators import staff_member_required
 
 
 @login_required
@@ -79,6 +88,7 @@ def detalhe_cliente(request, cliente_id):
 
 
 @login_required
+@operador_required
 def novo_cliente(request):
 
     if request.method == 'POST':
@@ -87,7 +97,15 @@ def novo_cliente(request):
 
         if form.is_valid():
 
-            form.save()
+            cliente = form.save()
+
+            HistoricoMovimentacao.objects.create(
+                usuario=request.user.username,
+                cliente_nome=cliente.nome,
+                cto_nome=cliente.cto.nome,
+                porta=cliente.porta,
+                acao='CLIENTE CADASTRADO'
+            )
 
             return redirect('/clientes/')
 
@@ -259,6 +277,7 @@ def exportar_clientes_pdf(request):
 
 
 @login_required
+@operador_required
 def editar_cliente(request, cliente_id):
 
     cliente = get_object_or_404(
@@ -275,7 +294,15 @@ def editar_cliente(request, cliente_id):
 
         if form.is_valid():
 
-            form.save()
+            cliente_editado = form.save()
+
+            HistoricoMovimentacao.objects.create(
+                usuario=request.user.username,
+                cliente_nome=cliente_editado.nome,
+                cto_nome=cliente_editado.cto.nome,
+                porta=cliente_editado.porta,
+                acao='CLIENTE EDITADO'
+            )
 
             return redirect('/clientes/')
 
@@ -296,6 +323,7 @@ def editar_cliente(request, cliente_id):
 
 
 @login_required
+@operador_required
 def excluir_cliente(request, cliente_id):
 
     cliente = get_object_or_404(
@@ -304,6 +332,14 @@ def excluir_cliente(request, cliente_id):
     )
 
     if request.method == 'POST':
+
+        HistoricoMovimentacao.objects.create(
+            usuario=request.user.username,
+            cliente_nome=cliente.nome,
+            cto_nome=cliente.cto.nome,
+            porta=cliente.porta,
+            acao='CLIENTE EXCLUÍDO'
+        )
 
         cliente.delete()
 
@@ -314,5 +350,19 @@ def excluir_cliente(request, cliente_id):
         'clientes/excluir_cliente.html',
         {
             'cliente': cliente,
+        }
+    )
+
+
+@staff_member_required
+def historico_movimentacoes(request):
+
+    historicos = HistoricoMovimentacao.objects.all()
+
+    return render(
+        request,
+        'clientes/historico.html',
+        {
+            'historicos': historicos
         }
     )

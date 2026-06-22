@@ -63,3 +63,41 @@ def atualizar_ocupacao_cto(sender, instance, **kwargs):
         cto.save(
             update_fields=['portas_ocupadas']
         )
+
+
+class HistoricoMovimentacao(models.Model):
+
+    data = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    usuario = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True
+    )
+
+    cliente_nome = models.CharField(
+        max_length=100
+    )
+
+    cto_nome = models.CharField(
+        max_length=100
+    )
+
+    porta = models.IntegerField()
+
+    acao = models.CharField(
+        max_length=50
+    )
+
+    observacao = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    class Meta:
+        ordering = ['-data']
+
+    def __str__(self):
+        return f"{self.acao} - {self.cliente_nome}"

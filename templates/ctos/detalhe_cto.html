@@ -28,6 +28,17 @@
         ← Voltar para Lista de CTOs
     </a>
 
+    {% if request.user.is_superuser %}
+
+    <a href="/ctos/{{ cto.id }}/excluir/"
+       class="btn btn-danger mb-3">
+
+        🗑 Excluir CTO
+
+    </a>
+
+    {% endif %}
+
     <div class="card shadow p-4">
 
         <h2>📦 {{ cto.nome }}</h2>

@@ -4,7 +4,10 @@ from django.db.models import Q
 
 from .models import CTO
 from .forms import CTOForm
-from clientes.models import Cliente
+from clientes.models import (
+    Cliente,
+    HistoricoMovimentacao
+)
 
 import openpyxl
 
@@ -22,6 +25,9 @@ from reportlab.lib.styles import getSampleStyleSheet
 from datetime import datetime
 
 from django.contrib.auth.decorators import login_required
+from accounts.permissoes import (
+    operador_required
+)
 
 
 @login_required
@@ -89,6 +95,18 @@ def lista_ctos(request):
             'total_ocupadas': total_ocupadas,
             'total_livres': total_livres,
             'taxa_ocupacao': taxa_ocupacao,
+
+            'eh_admin': request.user.groups.filter(
+                name='Administrador'
+            ).exists(),
+
+            'eh_operador': request.user.groups.filter(
+                name='Operador'
+            ).exists(),
+
+            'eh_tecnico': request.user.groups.filter(
+                name='Consulta do Técnico'
+            ).exists(),
         }
     )
 
@@ -158,7 +176,16 @@ def nova_cto(request):
 
         if form.is_valid():
 
-            form.save()
+            cto = form.save()
+
+            HistoricoMovimentacao.objects.create(
+                usuario=request.user.username,
+                cliente_nome="-",
+                cto_nome=cto.nome,
+                porta=0,
+                acao="CTO CRIADA",
+                observacao=f"Rua: {cto.rua}"
+            )
 
             return redirect('/ctos/')
 
@@ -171,6 +198,57 @@ def nova_cto(request):
         'ctos/nova_cto.html',
         {
             'form': form
+        }
+    )
+
+
+@login_required
+@operador_required
+def editar_cto(
+    request,
+    cto_id
+):
+
+    cto = CTO.objects.get(
+        id=cto_id
+    )
+
+    if request.method == 'POST':
+
+        form = CTOForm(
+            request.POST,
+            instance=cto
+        )
+
+        if form.is_valid():
+
+            cto_editada = form.save()
+
+            HistoricoMovimentacao.objects.create(
+                usuario=request.user.username,
+                cliente_nome="-",
+                cto_nome=cto_editada.nome,
+                porta=0,
+                acao="CTO EDITADA",
+                observacao=f"Rua: {cto_editada.rua}"
+            )
+
+            return redirect(
+                '/ctos/'
+            )
+
+    else:
+
+        form = CTOForm(
+            instance=cto
+        )
+
+    return render(
+        request,
+        'ctos/editar_cto.html',
+        {
+            'form': form,
+            'cto': cto,
         }
     )
 
@@ -492,3 +570,63 @@ def exportar_ctos_pdf(request):
     documento.build(elementos)
 
     return response
+
+
+from django.contrib.auth.decorators import user_passes_test
+
+
+@login_required
+@user_passes_test(
+    lambda u: u.groups.filter(
+        name='Administrador'
+    ).exists()
+)
+def excluir_cto(
+    request,
+    cto_id
+):
+
+    cto = get_object_or_404(
+        CTO,
+        id=cto_id
+    )
+
+    quantidade_clientes = Cliente.objects.filter(
+        cto=cto
+    ).count()
+
+    if quantidade_clientes > 0:
+
+        return render(
+            request,
+            'ctos/erro_exclusao.html',
+            {
+                'cto': cto,
+                'quantidade_clientes': quantidade_clientes,
+            }
+        )
+
+    if request.method == 'POST':
+
+        HistoricoMovimentacao.objects.create(
+            usuario=request.user.username,
+            cliente_nome="-",
+            cto_nome=cto.nome,
+            porta=0,
+            acao="CTO EXCLUÍDA",
+            observacao=f"Rua: {cto.rua}"
+        )
+
+        cto.delete()
+
+        return redirect(
+            '/ctos/'
+        )
+
+    return render(
+        request,
+        'ctos/excluir_cto.html',
+        {
+            'cto': cto
+        }
+    )
