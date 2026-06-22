@@ -94,11 +94,37 @@
 
 <body>
 
+<nav class="navbar navbar-dark bg-dark d-md-none">
+
+    <div class="container-fluid">
+
+        <span class="navbar-brand">
+            CTO Manager
+        </span>
+
+        <button
+            class="navbar-toggler"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#menuMobile"
+        >
+
+            <span class="navbar-toggler-icon"></span>
+
+        </button>
+
+    </div>
+
+</nav>
+
 <div class="container-fluid">
 
     <div class="row">
 
-        <div class="col-md-2 sidebar">
+        <div
+            class="col-md-2 sidebar collapse d-md-block"
+            id="menuMobile"
+        >
 
             <h3 class="text-center mb-4">
                 CTO SYSTEM
@@ -182,10 +208,6 @@
                 💾 Backup do Sistema
             </a>
 
-            <a href="/sistema/restaurar/">
-                ♻ Restaurar Backup
-            </a>
-
             {% endif %}
 
             <hr>
@@ -263,28 +285,28 @@
                 <div class="col-xl-3 col-lg-6 col-md-6 col-12 mb-3">
                     <div class="card card-dashboard bg-primary p-3">
                         <h5>Total de CTOs</h5>
-                        <h2>{{ total_ctos }}</h2>
+                        <h2 class="display-5">{{ total_ctos }}</h2>
                     </div>
                 </div>
 
                 <div class="col-xl-3 col-lg-6 col-md-6 col-12 mb-3">
                     <div class="card card-dashboard bg-success p-3">
                         <h5>Total de Clientes</h5>
-                        <h2>{{ total_clientes }}</h2>
+                        <h2 class="display-5">{{ total_clientes }}</h2>
                     </div>
                 </div>
 
                 <div class="col-xl-3 col-lg-6 col-md-6 col-12 mb-3">
                     <div class="card card-dashboard bg-warning p-3">
                         <h5>CTOs Ocupadas</h5>
-                        <h2>{{ ctos_ocupadas }}</h2>
+                        <h2 class="display-5">{{ ctos_ocupadas }}</h2>
                     </div>
                 </div>
 
                 <div class="col-xl-3 col-lg-6 col-md-6 col-12 mb-3">
                     <div class="card card-dashboard bg-danger p-3">
                         <h5>Portas Livres</h5>
-                        <h2>{{ portas_livres }}</h2>
+                        <h2 class="display-5">{{ portas_livres }}</h2>
                     </div>
                 </div>
 
@@ -568,7 +590,7 @@
 
             </div>
 
-            <div class="card mt-4 p-4" id="busca">
+            <div class="card mt-4 p-4 shadow" id="busca">
 
                 <h4>🔎 Busca por CTO ou Cliente</h4>
 
@@ -772,7 +794,7 @@
 
                     {% for porta in mapa_portas %}
 
-                        <div class="col-md-2 mb-3">
+                        <div class="col-6 col-md-2 mb-3">
 
                             {% if porta.status == "ocupada" %}
 

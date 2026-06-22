@@ -25,6 +25,9 @@ import shutil
 @login_required
 def backup_sistema(request):
 
+    if not request.user.is_superuser:
+        return redirect("/")
+
     os.makedirs(
         settings.BACKUP_DIR,
         exist_ok=True
@@ -67,6 +70,9 @@ def backup_sistema(request):
 
 @login_required
 def lista_backups(request):
+
+    if not request.user.is_superuser:
+        return redirect("/")
 
     os.makedirs(
         settings.BACKUP_DIR,
@@ -160,7 +166,12 @@ def novo_usuario(request):
                 usuario.is_staff = True
                 usuario.is_superuser = True
 
-                usuario.save()
+            else:
+
+                usuario.is_staff = False
+                usuario.is_superuser = False
+
+            usuario.save()
 
         HistoricoMovimentacao.objects.create(
             usuario=request.user.username,
