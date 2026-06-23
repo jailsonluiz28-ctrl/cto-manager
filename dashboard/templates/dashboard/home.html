@@ -54,6 +54,9 @@
             color: white;
             transition: .3s;
             box-shadow: 0 4px 15px rgba(0,0,0,.08);
+            position: relative;
+            overflow: hidden;
+            min-height: 95px;
         }
 
         .card-dashboard:hover {
@@ -67,7 +70,7 @@
 
         .card-dashboard h5 {
             font-size: 14px;
-            opacity: .9;
+            font-weight: 600;
         }
 
         .porta-card {
@@ -79,6 +82,90 @@
         .alert-card {
             border-radius: 15px;
             border: none;
+        }
+
+        .bg-cto {
+            background: linear-gradient(
+                135deg,
+                #0d6efd,
+                #0b5ed7
+            );
+        }
+
+        .bg-cliente {
+            background: linear-gradient(
+                135deg,
+                #198754,
+                #157347
+            );
+        }
+
+        .bg-ocupada {
+            background: linear-gradient(
+                135deg,
+                #ffc107,
+                #ffb300
+            );
+        }
+
+        .bg-porta {
+            background: linear-gradient(
+                135deg,
+                #dc3545,
+                #d90429
+            );
+        }
+
+        .bg-livre {
+            background: linear-gradient(
+                135deg,
+                #198754,
+                #157347
+            );
+        }
+
+        .bg-rede {
+            background: linear-gradient(
+                135deg,
+                #dc3545,
+                #ef4444
+            );
+        }
+
+        .bg-lotada {
+            background: linear-gradient(
+                135deg,
+                #6f42c1,
+                #8b5cf6
+            );
+        }
+
+        .bg-capacidade {
+            background: linear-gradient(
+                135deg,
+                #0dcaf0,
+                #22d3ee
+            );
+        }
+
+        .icon-bg {
+            position: absolute;
+
+            right: 15px;
+            bottom: 8px;
+
+            width: 70px;
+            height: 70px;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            font-size: 60px;
+
+            opacity: .10;
+
+            overflow: hidden;
         }
 
         @media(max-width:768px) {
@@ -288,31 +375,35 @@
 
             <div class="row">
 
-                <div class="col-xl-3 col-lg-6 col-md-6 col-12 mb-3">
-                    <div class="card card-dashboard bg-primary p-3">
+                <div class="col-md-3 mb-3">
+                    <div class="card card-dashboard bg-cto text-white p-3">
+                        <div class="icon-bg">📦</div>
                         <h5>Total de CTOs</h5>
-                        <h2 class="display-5">{{ total_ctos }}</h2>
+                        <h2>{{ total_ctos }}</h2>
                     </div>
                 </div>
 
-                <div class="col-xl-3 col-lg-6 col-md-6 col-12 mb-3">
-                    <div class="card card-dashboard bg-success p-3">
+                <div class="col-md-3 mb-3">
+                    <div class="card card-dashboard bg-cliente text-white p-3">
+                        <div class="icon-bg">👥</div>
                         <h5>Total de Clientes</h5>
-                        <h2 class="display-5">{{ total_clientes }}</h2>
+                        <h2>{{ total_clientes }}</h2>
                     </div>
                 </div>
 
-                <div class="col-xl-3 col-lg-6 col-md-6 col-12 mb-3">
-                    <div class="card card-dashboard bg-warning p-3">
+                <div class="col-md-3 mb-3">
+                    <div class="card card-dashboard bg-ocupada text-white p-3">
+                        <div class="icon-bg">🔌</div>
                         <h5>CTOs Ocupadas</h5>
-                        <h2 class="display-5">{{ ctos_ocupadas }}</h2>
+                        <h2>{{ ctos_ocupadas }}</h2>
                     </div>
                 </div>
 
-                <div class="col-xl-3 col-lg-6 col-md-6 col-12 mb-3">
-                    <div class="card card-dashboard bg-danger p-3">
+                <div class="col-md-3 mb-3">
+                    <div class="card card-dashboard bg-porta text-white p-3">
+                        <div class="icon-bg">🚪</div>
                         <h5>Portas Livres</h5>
-                        <h2 class="display-5">{{ portas_livres }}</h2>
+                        <h2>{{ portas_livres }}</h2>
                     </div>
                 </div>
 
@@ -320,96 +411,36 @@
 
             <div class="row mt-3">
 
-                <div class="col-md-4">
-
-                    <div class="card bg-success text-white p-3">
-
+                <div class="col-md-3 mb-3">
+                    <div class="card card-dashboard bg-livre text-white p-3">
+                        <div class="icon-bg">✅</div>
                         <h5>Rede Livre</h5>
-
                         <h2>{{ percentual_livre }}%</h2>
-
                     </div>
-
                 </div>
 
-                <div class="col-md-4">
-
-                    <div class="card bg-danger text-white p-3">
-
+                <div class="col-md-3 mb-3">
+                    <div class="card card-dashboard bg-rede text-white p-3">
+                        <div class="icon-bg">❌</div>
                         <h5>Rede Ocupada</h5>
-
                         <h2>{{ percentual_ocupado }}%</h2>
-
                     </div>
-
                 </div>
 
-            </div>
-
-            <div class="row mt-3">
-
-                <div class="col-md-4 mb-3">
-
-                    <div class="card alert-card bg-danger text-white">
-
-                        <div class="card-body">
-
-                            <h5>🚨 CTOs Lotadas</h5>
-
-                            <h2>{{ quantidade_ctos_lotadas }}</h2>
-
-                        </div>
-
+                <div class="col-md-3 mb-3">
+                    <div class="card card-dashboard bg-lotada text-white p-3">
+                        <div class="icon-bg">🚨</div>
+                        <h5>CTOs Lotadas</h5>
+                        <h2>{{ quantidade_ctos_lotadas }}</h2>
                     </div>
-
                 </div>
 
-                <div class="col-md-4 mb-3">
-
-                    <div class="card alert-card bg-warning">
-
-                        <div class="card-body">
-
-                            <h5>⚠ CTOs com 1 vaga</h5>
-
-                            <h2>{{ ctos_uma_vaga }}</h2>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-                <div class="col-md-4 mb-3">
-
-                    <div class="card alert-card bg-success text-white">
-
-                        <div class="card-body">
-
-                            <h5>🟢 CTOs Disponíveis</h5>
-
-                            <h2>{{ ctos_disponiveis }}</h2>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-            <div class="row mt-3">
-
-                <div class="col-md-3">
-
-                    <div class="card card-dashboard bg-info p-3">
-
+                <div class="col-md-3 mb-3">
+                    <div class="card card-dashboard bg-capacidade text-white p-3">
+                        <div class="icon-bg">📊</div>
                         <h5>Capacidade Total</h5>
-
                         <h2>{{ portas_livres|add:total_clientes }}</h2>
-
                     </div>
-
                 </div>
 
             </div>
