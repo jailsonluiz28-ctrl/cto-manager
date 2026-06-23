@@ -233,6 +233,8 @@
 
         <div class="col-md-10 p-4">
 
+            {% if not eh_tecnico %}
+
             <div class="dashboard-header">
 
                 <div class="row align-items-center">
@@ -582,9 +584,15 @@
 
             </div>
 
+            {% endif %}
+
             <div class="card mt-4 p-4 shadow" id="busca">
 
+                {% if eh_tecnico %}
+                <h4>🔎 Buscar CTO ou Rua</h4>
+                {% else %}
                 <h4>🔎 Busca por CTO ou Cliente</h4>
+                {% endif %}
 
                 <form method="GET">
 
@@ -596,7 +604,11 @@
                                 type="text"
                                 name="busca"
                                 class="form-control"
+                                {% if eh_tecnico %}
+                                placeholder="Digite a CTO ou Rua"
+                                {% else %}
                                 placeholder="Digite o nome da CTO ou do Cliente"
+                                {% endif %}
                                 value="{{ request.GET.busca }}"
                             >
 
@@ -684,9 +696,15 @@
 
                     <hr>
 
+                    {% if eh_tecnico %}
+                    <h6>
+                        Portas da CTO
+                    </h6>
+                    {% else %}
                     <h6>
                         Clientes da CTO
                     </h6>
+                    {% endif %}
 
                     <table class="table table-sm">
 
@@ -696,7 +714,9 @@
 
                                 <th>Porta</th>
                                 <th>Status</th>
+                                {% if not eh_tecnico %}
                                 <th>Cliente</th>
+                                {% endif %}
 
                             </tr>
 
@@ -736,11 +756,11 @@
 
                                 </td>
 
+                                {% if not eh_tecnico %}
                                 <td>
-
                                     {{ cliente.cliente }}
-
                                 </td>
+                                {% endif %}
 
                             </tr>
 
@@ -800,7 +820,9 @@
 
                                     <br><br>
 
+                                    {% if not eh_tecnico %}
                                     {{ porta.cliente }}
+                                    {% endif %}
 
                                 </div>
 
@@ -830,6 +852,8 @@
 
             </div>
 
+            {% if not eh_tecnico %}
+
             <div class="card mt-4 p-4">
 
                 <h4>👥 Clientes desta CTO</h4>
@@ -858,7 +882,7 @@
 
             {% endif %}
 
-            {% if clientes_encontrados %}
+            {% if clientes_encontrados and not eh_tecnico %}
 
 <div class="card mt-4 p-4">
 
@@ -909,6 +933,8 @@
 </div>
 
 {% endif %}
+
+            {% endif %}
 
         </div>
 

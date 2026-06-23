@@ -129,21 +129,25 @@ def home(request):
         #
         # BUSCA DE CLIENTES
         #
-        todos_clientes = Cliente.objects.select_related(
-            'cto'
-        ).all()
+        if not request.user.groups.filter(
+            name='Tecnico'
+        ).exists():
 
-        for cliente in todos_clientes:
+            todos_clientes = Cliente.objects.select_related(
+                'cto'
+            ).all()
 
-            nome_normalizado = remover_acentos(
-                cliente.nome
-            )
+            for cliente in todos_clientes:
 
-            if busca_normalizada in nome_normalizado:
-
-                clientes_encontrados.append(
-                    cliente
+                nome_normalizado = remover_acentos(
+                    cliente.nome
                 )
+
+                if busca_normalizada in nome_normalizado:
+
+                    clientes_encontrados.append(
+                        cliente
+                    )
 
         #
         # BUSCA DE CTOs
@@ -327,7 +331,7 @@ def home(request):
             ).exists(),
 
             'eh_tecnico': request.user.groups.filter(
-                name='Consulta do Técnico'
+                name='Tecnico'
             ).exists(),
 
             'ultimas_movimentacoes': ultimas_movimentacoes,
