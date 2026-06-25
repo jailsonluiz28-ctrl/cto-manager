@@ -6,7 +6,127 @@ from ctos.models import CTO
 
 
 class Cliente(models.Model):
-    nome = models.CharField(max_length=100)
+
+    TIPO_PESSOA = [
+        ('CPF', 'CPF'),
+        ('CNPJ', 'CNPJ'),
+    ]
+
+    PROPRIEDADE_EQUIPAMENTO = [
+        ('EMPRESA', 'Empresa'),
+        ('CLIENTE', 'Cliente'),
+    ]
+
+    TIPO_EQUIPAMENTO = [
+        ('ONT', 'ONT'),
+        ('ROTEADOR', 'Roteador'),
+        ('ONU', 'ONU'),
+        ('ONU+ROTEADOR', 'ONU + Roteador'),
+    ]
+
+    nome = models.CharField(
+        max_length=100
+    )
+
+    tipo_pessoa = models.CharField(
+        max_length=10,
+        choices=TIPO_PESSOA,
+        default='CPF'
+    )
+
+    cpf_cnpj = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True
+    )
+
+    telefone = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True
+    )
+
+    possui_whatsapp = models.BooleanField(
+        default=True
+    )
+
+    data_nascimento = models.DateField(
+        blank=True,
+        null=True
+    )
+
+    cep = models.CharField(
+        max_length=10,
+        blank=True,
+        null=True
+    )
+
+    logradouro = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True
+    )
+
+    numero = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True
+    )
+
+    complemento = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True
+    )
+
+    bairro = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True
+    )
+
+    cidade = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True
+    )
+
+    estado = models.CharField(
+        max_length=2,
+        blank=True,
+        null=True
+    )
+
+    login_pppoe = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True
+    )
+
+    senha_pppoe = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True
+    )
+
+    equipamento_propriedade = models.CharField(
+        max_length=20,
+        choices=PROPRIEDADE_EQUIPAMENTO,
+        blank=True,
+        null=True
+    )
+
+    tipo_equipamento = models.CharField(
+        max_length=30,
+        choices=TIPO_EQUIPAMENTO,
+        blank=True,
+        null=True
+    )
+
+    observacao = models.TextField(
+        blank=True,
+        null=True
+    )
 
     cto = models.ForeignKey(
         CTO,
@@ -16,33 +136,38 @@ class Cliente(models.Model):
     porta = models.IntegerField()
 
     def clean(self):
-        # Verifica se a porta existe na CTO
+
         if self.porta > self.cto.portas_total:
+
             raise ValidationError(
                 f"Esta CTO possui apenas {self.cto.portas_total} portas."
             )
 
         if self.porta < 1:
+
             raise ValidationError(
                 "O número da porta deve ser maior que zero."
             )
 
-        # Verifica se já existe cliente usando essa porta
         cliente_existente = Cliente.objects.filter(
             cto=self.cto,
             porta=self.porta
         ).exclude(pk=self.pk)
 
         if cliente_existente.exists():
+
             raise ValidationError(
                 f"A porta {self.porta} já está ocupada."
             )
 
     def save(self, *args, **kwargs):
+
         self.full_clean()
+
         super().save(*args, **kwargs)
 
     def __str__(self):
+
         return self.nome
 
 
@@ -97,7 +222,9 @@ class HistoricoMovimentacao(models.Model):
     )
 
     class Meta:
+
         ordering = ['-data']
 
     def __str__(self):
+
         return f"{self.acao} - {self.cliente_nome}"

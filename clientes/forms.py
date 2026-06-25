@@ -6,11 +6,99 @@ from ctos.models import CTO
 class ClienteForm(forms.ModelForm):
 
     class Meta:
+
         model = Cliente
-        fields = ['nome', 'cto', 'porta']
+
+        fields = [
+            'nome',
+            'tipo_pessoa',
+            'cpf_cnpj',
+            'telefone',
+            'possui_whatsapp',
+            'data_nascimento',
+
+            'cep',
+            'logradouro',
+            'numero',
+            'complemento',
+            'bairro',
+            'cidade',
+            'estado',
+
+            'login_pppoe',
+            'senha_pppoe',
+
+            'cto',
+            'porta',
+
+            'equipamento_propriedade',
+            'tipo_equipamento',
+
+            'observacao',
+        ]
 
         widgets = {
+
             'nome': forms.TextInput(
+                attrs={'class': 'form-control'}
+            ),
+
+            'tipo_pessoa': forms.Select(
+                attrs={'class': 'form-select'}
+            ),
+
+            'cpf_cnpj': forms.TextInput(
+                attrs={'class': 'form-control'}
+            ),
+
+            'telefone': forms.TextInput(
+                attrs={'class': 'form-control'}
+            ),
+
+            'possui_whatsapp': forms.CheckboxInput(
+                attrs={'class': 'form-check-input'}
+            ),
+
+            'data_nascimento': forms.DateInput(
+                attrs={
+                    'class': 'form-control',
+                    'type': 'date'
+                }
+            ),
+
+            'cep': forms.TextInput(
+                attrs={'class': 'form-control'}
+            ),
+
+            'logradouro': forms.TextInput(
+                attrs={'class': 'form-control'}
+            ),
+
+            'numero': forms.TextInput(
+                attrs={'class': 'form-control'}
+            ),
+
+            'complemento': forms.TextInput(
+                attrs={'class': 'form-control'}
+            ),
+
+            'bairro': forms.TextInput(
+                attrs={'class': 'form-control'}
+            ),
+
+            'cidade': forms.TextInput(
+                attrs={'class': 'form-control'}
+            ),
+
+            'estado': forms.TextInput(
+                attrs={'class': 'form-control'}
+            ),
+
+            'login_pppoe': forms.TextInput(
+                attrs={'class': 'form-control'}
+            ),
+
+            'senha_pppoe': forms.PasswordInput(
                 attrs={'class': 'form-control'}
             ),
 
@@ -20,6 +108,21 @@ class ClienteForm(forms.ModelForm):
 
             'porta': forms.Select(
                 attrs={'class': 'form-select'}
+            ),
+
+            'equipamento_propriedade': forms.Select(
+                attrs={'class': 'form-select'}
+            ),
+
+            'tipo_equipamento': forms.Select(
+                attrs={'class': 'form-select'}
+            ),
+
+            'observacao': forms.Textarea(
+                attrs={
+                    'class': 'form-control',
+                    'rows': 4
+                }
             ),
         }
 
@@ -35,24 +138,26 @@ class ClienteForm(forms.ModelForm):
 
         cto = None
 
-        # EDITANDO UM CLIENTE
         if self.instance and self.instance.pk:
 
             cto = self.instance.cto
 
-        # POST DO FORMULÁRIO
         elif self.data.get('cto'):
 
             try:
+
                 cto = CTO.objects.get(
                     id=self.data.get('cto')
                 )
+
             except CTO.DoesNotExist:
+
                 pass
 
         if cto:
 
             portas_ocupadas = list(
+
                 Cliente.objects.filter(
                     cto=cto
                 ).exclude(
@@ -61,11 +166,15 @@ class ClienteForm(forms.ModelForm):
                     'porta',
                     flat=True
                 )
+
             )
 
             portas = []
 
-            for numero in range(1, cto.portas_total + 1):
+            for numero in range(
+                1,
+                cto.portas_total + 1
+            ):
 
                 if (
                     numero not in portas_ocupadas
@@ -81,6 +190,7 @@ class ClienteForm(forms.ModelForm):
                         self.instance.pk
                         and numero == self.instance.porta
                     ):
+
                         texto += ' (porta atual)'
 
                     portas.append(
@@ -89,6 +199,8 @@ class ClienteForm(forms.ModelForm):
 
             self.fields['porta'].choices = portas
 
-            # deixa a porta atual selecionada
             if self.instance.pk:
-                self.initial['porta'] = self.instance.porta
+
+                self.initial['porta'] = (
+                    self.instance.porta
+                )
