@@ -371,3 +371,19 @@ def gerar_backup(request):
         as_attachment=True,
         filename=nome_arquivo
     )
+
+
+@login_required
+def lista_ctos_lotadas(request):
+
+    ctos_lotadas = CTO.objects.filter(
+        portas_ocupadas=models.F('portas_total')
+    )
+
+    return render(
+        request,
+        'dashboard/ctos_lotadas.html',
+        {
+            'ctos_lotadas': ctos_lotadas
+        }
+    )

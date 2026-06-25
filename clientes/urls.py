@@ -5,7 +5,6 @@ from .views import (
     lista_clientes,
     detalhe_cliente,
     portas_disponiveis,
-    exportar_clientes_excel,
     exportar_clientes_pdf,
     editar_cliente,
     excluir_cliente,
@@ -47,12 +46,6 @@ urlpatterns = [
         'portas/<int:cto_id>/',
         portas_disponiveis,
         name='portas_disponiveis'
-    ),
-
-    path(
-        'exportar/excel/',
-        exportar_clientes_excel,
-        name='exportar_clientes_excel'
     ),
 
     path(

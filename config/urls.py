@@ -2,9 +2,13 @@ from django.contrib import admin
 from django.urls import path, include
 from django.contrib.auth import views as auth_views
 
-from dashboard.views import home
+from dashboard.views import (
+    home,
+    lista_ctos_lotadas
+)
 
 urlpatterns = [
+
     path(
         'login/',
         auth_views.LoginView.as_view(
@@ -19,13 +23,32 @@ urlpatterns = [
         name='logout'
     ),
 
-    path('', home, name='home'),
+    path(
+        '',
+        home,
+        name='home'
+    ),
 
-    path('admin/', admin.site.urls),
+    path(
+        'ctos-lotadas/',
+        lista_ctos_lotadas,
+        name='ctos_lotadas'
+    ),
 
-    path('clientes/', include('clientes.urls')),
+    path(
+        'admin/',
+        admin.site.urls
+    ),
 
-    path('ctos/', include('ctos.urls')),
+    path(
+        'clientes/',
+        include('clientes.urls')
+    ),
+
+    path(
+        'ctos/',
+        include('ctos.urls')
+    ),
 
     path(
         'sistema/',

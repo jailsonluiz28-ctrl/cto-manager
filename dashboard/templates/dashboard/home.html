@@ -279,16 +279,8 @@
                 📋 Histórico
             </a>
 
-            <a href="/clientes/exportar/excel/">
-                📊 Clientes Excel
-            </a>
-
             <a href="/clientes/exportar/pdf/">
                 📄 Clientes PDF
-            </a>
-
-            <a href="/ctos/exportar/excel/">
-                📊 CTOs Excel
             </a>
 
             <a href="/ctos/exportar/pdf/">
@@ -356,23 +348,6 @@
 
             </div>
 
-            {% if quantidade_ctos_lotadas > 0 %}
-
-            <div class="alert alert-danger">
-
-                <strong>
-
-                    🚨 Atenção!
-
-                    Existem {{ quantidade_ctos_lotadas }}
-                    CTO(s) lotada(s).
-
-                </strong>
-
-            </div>
-
-            {% endif %}
-
             <div class="row">
 
                 <div class="col-md-3 mb-3">
@@ -428,11 +403,22 @@
                 </div>
 
                 <div class="col-md-3 mb-3">
-                    <div class="card card-dashboard bg-lotada text-white p-3">
-                        <div class="icon-bg">🚨</div>
-                        <h5>CTOs Lotadas</h5>
-                        <h2>{{ quantidade_ctos_lotadas }}</h2>
-                    </div>
+
+                    <a href="/ctos-lotadas/"
+                       style="text-decoration:none;">
+
+                        <div class="card card-dashboard bg-lotada text-white p-3">
+
+                            <div class="icon-bg">🚨</div>
+
+                            <h5>CTOs Lotadas</h5>
+
+                            <h2>{{ quantidade_ctos_lotadas }}</h2>
+
+                        </div>
+
+                    </a>
+
                 </div>
 
                 <div class="col-md-3 mb-3">
@@ -444,74 +430,6 @@
                 </div>
 
             </div>
-
-            {% if quantidade_ctos_lotadas > 0 %}
-
-            <div class="card mt-4 border-danger">
-
-                <div class="card-header bg-danger text-white">
-
-                    🚨 CTOs Lotadas
-
-                </div>
-
-                <div class="card-body">
-
-                    <table class="table">
-
-                        <thead>
-
-                            <tr>
-
-                                <th>CTO</th>
-
-                                <th>Rua</th>
-
-                                <th>Portas</th>
-
-                            </tr>
-
-                        </thead>
-
-                        <tbody>
-
-                        {% for cto in ctos_lotadas %}
-
-                            <tr>
-
-                                <td>
-
-                                    <a href="/?busca={{ cto.nome }}">
-
-                                        {{ cto.nome }}
-
-                                    </a>
-
-                                </td>
-
-                                <td>{{ cto.rua }}</td>
-
-                                <td>
-
-                                    {{ cto.portas_ocupadas }}
-                                    /
-                                    {{ cto.portas_total }}
-
-                                </td>
-
-                            </tr>
-
-                        {% endfor %}
-
-                        </tbody>
-
-                    </table>
-
-                </div>
-
-            </div>
-
-            {% endif %}
 
             {% if eh_admin %}
 

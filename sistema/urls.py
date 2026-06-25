@@ -9,6 +9,7 @@ from .views import (
     restaurar_backup,
     editar_usuario,
     excluir_usuario,
+    excluir_backup,
 )
 
 urlpatterns = [
@@ -29,6 +30,12 @@ urlpatterns = [
         "restaurar/",
         restaurar_backup,
         name="restaurar_backup"
+    ),
+
+    path(
+        "excluir-backup/<str:arquivo>/",
+        excluir_backup,
+        name="excluir_backup"
     ),
 
     path(

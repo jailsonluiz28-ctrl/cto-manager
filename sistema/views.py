@@ -285,6 +285,32 @@ def restaurar_backup(request):
 
 
 @login_required
+def excluir_backup(request, arquivo):
+
+    if not request.user.is_superuser:
+        return redirect("/")
+
+    caminho = settings.BACKUP_DIR / arquivo
+
+    if os.path.exists(caminho):
+
+        os.remove(caminho)
+
+        HistoricoMovimentacao.objects.create(
+            usuario=request.user.username,
+            cliente_nome="-",
+            cto_nome="-",
+            porta=0,
+            acao="BACKUP EXCLUÍDO",
+            observacao=arquivo
+        )
+
+    return redirect(
+        "/sistema/backups/"
+    )
+
+
+@login_required
 def editar_usuario(
     request,
     user_id

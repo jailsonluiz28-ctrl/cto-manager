@@ -3,7 +3,6 @@ from django.urls import path
 from .views import (
     lista_ctos,
     detalhe_cto,
-    exportar_ctos_excel,
     exportar_ctos_pdf,
     nova_cto,
     editar_cto,
@@ -40,12 +39,6 @@ urlpatterns = [
         '<int:cto_id>/',
         detalhe_cto,
         name='detalhe_cto'
-    ),
-
-    path(
-        'exportar/excel/',
-        exportar_ctos_excel,
-        name='exportar_ctos_excel'
     ),
 
     path(
