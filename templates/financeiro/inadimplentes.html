@@ -1,0 +1,107 @@
+{% extends 'base/base.html' %}
+
+{% block title %}
+Inadimplentes
+{% endblock %}
+
+{% block content %}
+
+<h2 class="mb-4">
+
+🔴 Clientes Inadimplentes
+
+</h2>
+
+<div class="card">
+
+<div class="card-body">
+
+<table class="table table-hover">
+
+<thead class="table-dark">
+
+<tr>
+
+<th>Cliente</th>
+
+<th>Vencimento</th>
+
+<th>Valor</th>
+
+<th>Dias</th>
+
+<th></th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+{% for m in mensalidades %}
+
+<tr>
+
+<td>
+
+{{ m.cliente.nome }}
+
+</td>
+
+<td>
+
+{{ m.vencimento|date:"d/m/Y" }}
+
+</td>
+
+<td>
+
+R$ {{ m.valor }}
+
+</td>
+
+<td>
+
+Em atraso
+
+</td>
+
+<td>
+
+<a
+
+href="/financeiro/{{ m.id }}/receber/"
+
+class="btn btn-success btn-sm">
+
+💰 Receber
+
+</a>
+
+</td>
+
+</tr>
+
+{% empty %}
+
+<tr>
+
+<td colspan="5" class="text-center">
+
+Nenhum cliente inadimplente.
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+{% endblock %}

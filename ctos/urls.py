@@ -4,6 +4,7 @@ from .views import (
     lista_ctos,
     detalhe_cto,
     exportar_ctos_pdf,
+    exportar_ctos_excel,
     nova_cto,
     editar_cto,
     excluir_cto,
@@ -45,6 +46,12 @@ urlpatterns = [
         'exportar/pdf/',
         exportar_ctos_pdf,
         name='exportar_ctos_pdf'
+    ),
+
+    path(
+        'exportar/excel/',
+        exportar_ctos_excel,
+        name='exportar_ctos_excel'
     ),
 
 ]

@@ -6,174 +6,656 @@
     <title>CTO Manager</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
     <style>
+        :root {
+            --sidebar: #0B1736;
+            --sidebar-dark: #081229;
+            --primary: #2563EB;
+            --success: #22C55E;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --info: #06B6D4;
+            --bg: #EEF3F9;
+            --card: #FFFFFF;
+            --text: #1E293B;
+            --radius: 18px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
-            background: #f4f7fc;
-            font-family: Segoe UI, Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            overflow-x: hidden;
+            color: var(--text);
+            font-size: 14px;
+        }
+
+        .container-fluid {
+            max-width: 100%;
+            overflow-x: hidden;
         }
 
         .sidebar {
-            min-height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 250px;
+            height: 100vh;
             background: linear-gradient(
                 180deg,
-                #0d1b52,
-                #152d7a
+                var(--sidebar),
+                var(--sidebar-dark)
             );
-            color: white;
-            padding-top: 20px;
-            box-shadow: 3px 0 15px rgba(0,0,0,.15);
+            padding: 12px 14px;
+            overflow: auto;
+            box-shadow: 5px 0 20px rgba(0,0,0,.15);
+            z-index: 1000;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,.25);
+            border-radius: 20px;
+        }
+
+        .sidebar,
+        .sidebar a,
+        .sidebar h3,
+        .sidebar small {
+            color: #fff;
         }
 
         .sidebar a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 14px;
+            margin-bottom: 4px;
+            border-radius: 10px;
             color: white;
             text-decoration: none;
-            display: block;
-            padding: 12px;
-            border-radius: 10px;
-            margin-bottom: 5px;
-            transition: .3s;
+            font-size: 13px;
+            transition: .25s;
+            position: relative;
+            overflow: hidden;
+            font-weight: 500;
         }
 
         .sidebar a:hover {
-            background: rgba(255,255,255,.15);
-            transform: translateX(5px);
+            color: #fff;
         }
 
-        .dashboard-header {
+        .sidebar a::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 4px;
+            height: 100%;
             background: white;
-            border-radius: 15px;
+            transform: scaleY(0);
+            transition: .3s;
+        }
+
+        .sidebar a:hover::before {
+            transform: scaleY(1);
+        }
+
+        .sidebar a.active {
+            background: rgba(255,255,255,.18);
+        }
+
+        .sidebar a.active::before {
+            transform: scaleY(1);
+        }
+
+        .sidebar hr {
+            border-color: rgba(255,255,255,.15);
+            margin: 10px 0;
+        }
+
+        .sidebar .card {
+            color: #111827;
+            margin-bottom: 12px !important;
+        }
+
+        .sidebar .card-body {
+            padding: 12px;
+        }
+
+        .sidebar .card-body .user-avatar-sidebar {
+            width: 50px;
+            height: 50px;
+            background: #2563EB;
+            border-radius: 50%;
+            margin: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .sidebar h3 {
+            font-size: 18px;
+            margin: 6px 0 0 0;
+        }
+
+        .sidebar small {
+            font-size: 11px;
+        }
+
+        .sidebar .text-center.mb-4 {
+            margin-bottom: 10px !important;
+        }
+
+        .sidebar .text-center.mt-4 {
+            margin-top: 10px !important;
+        }
+
+        .main {
+            margin-left: 250px;
+            width: calc(100% - 250px);
             padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,.08);
+            overflow-x: hidden;
+            max-width: 100%;
+        }
+
+        .topbar {
+            height: 52px;
+            background: white;
+            border-radius: 14px;
+            padding: 0 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 3px 12px rgba(0,0,0,.08);
+            margin-bottom: 16px;
+        }
+
+        .topbar input {
+            border-radius: 25px;
+            border: none;
+            background: #F3F4F6;
+            padding-left: 16px;
+            font-size: 13px;
+            height: 34px;
+        }
+
+        .topbar input:focus {
+            box-shadow: none;
+            background: white;
+            border: 1px solid #2563EB;
+        }
+
+        .user-avatar {
+            transition: .3s;
+            cursor: pointer;
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.08);
+        }
+
+        .btn-light {
+            border: none;
+            box-shadow: 0 3px 10px rgba(0,0,0,.08);
+            padding: 4px 10px;
+            font-size: 13px;
+        }
+
+        .topbar h2 {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .topbar small {
+            color: #64748B;
+            font-size: 11px;
+        }
+
+        .user-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-avatar {
+            width: 38px;
+            height: 38px;
+            background: #2563EB;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
         }
 
         .card-dashboard {
             border: none;
-            border-radius: 18px;
+            border-radius: 14px;
+            padding: 10px 14px !important;
             color: white;
-            transition: .3s;
-            box-shadow: 0 4px 15px rgba(0,0,0,.08);
             position: relative;
             overflow: hidden;
-            min-height: 95px;
+            transition: .3s;
+            box-shadow: 0 4px 12px rgba(0,0,0,.08);
+            min-height: 60px;
+            cursor: pointer;
+            width: 100%;
+            max-width: 100%;
         }
 
         .card-dashboard:hover {
             transform: translateY(-5px);
-        }
-
-        .card-dashboard h2 {
-            font-size: 32px;
-            font-weight: bold;
+            box-shadow: 0 10px 25px rgba(0,0,0,.15);
         }
 
         .card-dashboard h5 {
-            font-size: 14px;
+            font-size: 10px;
             font-weight: 600;
+            opacity: .95;
+            margin-bottom: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        .porta-card {
-            border-radius: 15px;
-            font-weight: bold;
-            min-height: 120px;
-        }
-
-        .alert-card {
-            border-radius: 15px;
-            border: none;
-        }
-
-        .bg-cto {
-            background: linear-gradient(
-                135deg,
-                #0d6efd,
-                #0b5ed7
-            );
-        }
-
-        .bg-cliente {
-            background: linear-gradient(
-                135deg,
-                #198754,
-                #157347
-            );
-        }
-
-        .bg-ocupada {
-            background: linear-gradient(
-                135deg,
-                #ffc107,
-                #ffb300
-            );
-        }
-
-        .bg-porta {
-            background: linear-gradient(
-                135deg,
-                #dc3545,
-                #d90429
-            );
-        }
-
-        .bg-livre {
-            background: linear-gradient(
-                135deg,
-                #198754,
-                #157347
-            );
-        }
-
-        .bg-rede {
-            background: linear-gradient(
-                135deg,
-                #dc3545,
-                #ef4444
-            );
-        }
-
-        .bg-lotada {
-            background: linear-gradient(
-                135deg,
-                #6f42c1,
-                #8b5cf6
-            );
-        }
-
-        .bg-capacidade {
-            background: linear-gradient(
-                135deg,
-                #0dcaf0,
-                #22d3ee
-            );
+        .card-dashboard h2 {
+            font-size: 14px;
+            font-weight: 700;
+            margin-top: 1px;
         }
 
         .icon-bg {
             position: absolute;
-
-            right: 15px;
-            bottom: 8px;
-
-            width: 70px;
-            height: 70px;
-
-            display: flex;
-            align-items: center;
-            justify-content: center;
-
-            font-size: 60px;
-
-            opacity: .10;
-
-            overflow: hidden;
+            right: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 28px;
+            opacity: .15;
+            line-height: 1;
         }
 
-        @media(max-width:768px) {
+        .bg-cto {
+            background: linear-gradient(135deg, #2563EB, #1D4ED8);
+        }
+
+        .bg-cliente {
+            background: linear-gradient(135deg, #22C55E, #16A34A);
+        }
+
+        .bg-ocupada {
+            background: linear-gradient(135deg, #F59E0B, #D97706);
+        }
+
+        .bg-porta {
+            background: linear-gradient(135deg, #EF4444, #DC2626);
+        }
+
+        .bg-livre {
+            background: linear-gradient(135deg, #14B8A6, #0F766E);
+        }
+
+        .bg-rede {
+            background: linear-gradient(135deg, #7C3AED, #6D28D9);
+        }
+
+        .bg-lotada {
+            background: linear-gradient(135deg, #EC4899, #DB2777);
+        }
+
+        .bg-capacidade {
+            background: linear-gradient(135deg, #06B6D4, #0891B2);
+        }
+
+        .card {
+            border: none;
+            border-radius: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,.08);
+            transition: .25s;
+            animation: aparecer .45s;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+        }
+
+        .card.text-center {
+            min-height: 85px;
+        }
+
+        .card.text-center i {
+            font-size: 24px !important;
+        }
+
+        .card.text-center h6 {
+            font-size: 12px;
+            margin-top: 4px !important;
+        }
+
+        .card.text-center .card-body {
+            padding: 12px 8px;
+        }
+
+        .dashboard-cards {
+            row-gap: 8px;
+        }
+
+        .table {
+            margin-bottom: 0;
+            font-size: 13px;
+        }
+
+        .table thead {
+            background: #2563EB;
+            color: white;
+        }
+
+        .table thead th {
+            border: none;
+            font-weight: 600;
+            padding: 8px 12px;
+        }
+
+        .table tbody td {
+            padding: 6px 12px;
+        }
+
+        .table tbody tr {
+            transition: .20s;
+        }
+
+        .table tbody tr:hover {
+            background: #EEF5FF;
+        }
+
+        .btn {
+            border-radius: 10px;
+            font-weight: 600;
+            transition: .25s;
+            font-size: 13px;
+            padding: 6px 16px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 18px rgba(0,0,0,.12);
+        }
+
+        .form-control {
+            border-radius: 10px;
+            border: 1px solid #dbe3ef;
+            font-size: 13px;
+            padding: 6px 14px;
+        }
+
+        .form-control:focus {
+            border-color: #2563EB;
+            box-shadow: 0 0 10px rgba(37,99,235,.15);
+        }
+
+        .card-header {
+            border-radius: 14px 14px 0 0 !important;
+            font-weight: 600;
+            padding: 10px 16px;
+        }
+
+        .card-header h5, .card-header h6 {
+            font-size: 13px;
+            margin: 0;
+        }
+
+        .card-body {
+            padding: 14px 16px;
+        }
+
+        .list-group-item {
+            border: none;
+            padding: 8px 12px;
+            font-size: 13px;
+        }
+
+        .shadow-sm {
+            box-shadow: 0 4px 12px rgba(0,0,0,.08) !important;
+        }
+
+        .row {
+            margin-bottom: 8px;
+            margin-left: 0;
+            margin-right: 0;
+        }
+
+        .mb-3 {
+            margin-bottom: 10px !important;
+        }
+
+        .mb-4 {
+            margin-bottom: 14px !important;
+        }
+
+        .mt-4 {
+            margin-top: 14px !important;
+        }
+
+        .mt-3 {
+            margin-top: 10px !important;
+        }
+
+        .p-3 {
+            padding: 12px !important;
+        }
+
+        .p-4 {
+            padding: 14px !important;
+        }
+
+        .pt-4 {
+            padding-top: 14px !important;
+        }
+
+        .gap-3 {
+            gap: 10px !important;
+        }
+
+        .alert {
+            padding: 8px 12px;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .badge {
+            font-size: 11px;
+        }
+
+        .h-100 {
+            min-height: auto;
+        }
+
+        @keyframes aparecer {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media(max-width:992px) {
             .sidebar {
-                min-height: auto;
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+            .main {
+                margin-left: 0;
+                width: 100%;
+            }
+        }
+
+        /* Ajuste para telas de notebook */
+        @media screen and (max-height: 800px) {
+            .sidebar a {
+                padding: 6px 12px;
+                font-size: 12px;
+                gap: 8px;
+            }
+            .sidebar .card-body {
+                padding: 8px 10px;
+            }
+            .sidebar .card-body .user-avatar-sidebar {
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
+            .sidebar h3 {
+                font-size: 16px;
+            }
+            .sidebar .text-center.mb-4 {
+                margin-bottom: 6px !important;
+            }
+            .sidebar hr {
+                margin: 6px 0;
+            }
+            .sidebar .text-center.mt-4 {
+                margin-top: 6px !important;
+            }
+            .sidebar small {
+                font-size: 10px;
+            }
+            .sidebar .card.mb-4 {
+                margin-bottom: 8px !important;
+            }
+            .topbar {
+                height: 44px;
+                padding: 0 14px;
+                margin-bottom: 12px;
+            }
+            .topbar h2 {
+                font-size: 14px;
+            }
+            .topbar input {
+                height: 30px;
+                font-size: 12px;
+            }
+            .user-avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 14px;
+            }
+            .main {
+                padding: 12px 16px;
             }
             .card-dashboard {
-                margin-bottom: 15px;
+                min-height: 50px;
+                padding: 8px 12px !important;
+                border-radius: 12px;
+            }
+            .card-dashboard h5 {
+                font-size: 9px;
+            }
+            .card-dashboard h2 {
+                font-size: 12px;
+            }
+            .icon-bg {
+                font-size: 22px;
+                right: 4px;
+            }
+            .card.text-center {
+                min-height: 70px;
+            }
+            .card.text-center i {
+                font-size: 20px !important;
+            }
+            .card.text-center h6 {
+                font-size: 11px;
+            }
+            .card-body {
+                padding: 10px 12px;
+            }
+            .card-header {
+                padding: 8px 12px;
+            }
+            .card-header h5, .card-header h6 {
+                font-size: 12px;
+            }
+            .btn {
+                font-size: 12px;
+                padding: 4px 12px;
+            }
+            .table {
+                font-size: 12px;
+            }
+            .table thead th {
+                padding: 6px 10px;
+            }
+            .table tbody td {
+                padding: 4px 10px;
+            }
+            .mb-3 {
+                margin-bottom: 8px !important;
+            }
+            .mb-4 {
+                margin-bottom: 10px !important;
+            }
+            .mt-4 {
+                margin-top: 10px !important;
+            }
+            .dashboard-cards {
+                row-gap: 6px;
+            }
+        }
+
+        /* Ajuste específico para os cards não quebrarem */
+        .col-xl-3, .col-lg-3, .col-md-6 {
+            flex: 0 0 auto;
+        }
+
+        .dashboard-cards .col-xl-3 {
+            max-width: 25%;
+        }
+
+        @media (max-width: 1200px) {
+            .dashboard-cards .col-xl-3 {
+                max-width: 25%;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .dashboard-cards .col-lg-3 {
+                max-width: 25%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-cards .col-md-6 {
+                max-width: 50%;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .dashboard-cards .col-6 {
+                max-width: 50%;
             }
         }
     </style>
@@ -185,7 +667,7 @@
 
     <div class="container-fluid">
 
-        <span class="navbar-brand">
+        <span class="navbar-brand" style="font-size:14px;">
             CTO Manager
         </span>
 
@@ -213,134 +695,230 @@
             id="menuMobile"
         >
 
-            <h3 class="text-center mb-4">
-                CTO SYSTEM
-            </h3>
-
             <div class="text-center mb-4">
+
+                <div style="
+                    width:50px;
+                    height:50px;
+                    background:white;
+                    border-radius:16px;
+                    margin:auto;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    font-size:28px;
+                    color:#2563EB;
+                    font-weight:bold;
+                ">
+
+                    📡
+
+                </div>
+
+                <h3 class="mt-2 mb-0">
+
+                    CTO Manager
+
+                </h3>
 
                 <small>
 
-                    Logado como:
-
-                    <br>
-
-                    <strong>
-                        {{ request.user.username }}
-                    </strong>
+                    PRO v1.0
 
                 </small>
 
             </div>
 
-            {% if eh_admin or eh_operador %}
+            <div class="card mb-4 border-0">
 
-            <a href="/">📊 Dashboard</a>
+                <div class="card-body text-center">
 
-            {% endif %}
+                    <div class="user-avatar-sidebar">
 
-            {% if eh_admin or eh_operador %}
+                        {{ request.user.username|first|upper }}
 
-            <a href="/ctos/">
-                📦 CTOs
+                    </div>
+
+                    <h6 class="mt-2 mb-0" style="font-size:13px;">
+
+                        {{ request.user.username }}
+
+                    </h6>
+
+                    <small class="text-muted" style="font-size:10px;">
+
+                        Administrador
+
+                    </small>
+
+                </div>
+
+            </div>
+
+            <!-- OPERAÇÃO -->
+            <a href="/" class="active">
+                <i class="bi bi-speedometer2"></i>
+                Dashboard
             </a>
-
-            {% endif %}
-
-            {% if eh_admin or eh_operador %}
 
             <a href="/clientes/">
-                👥 Clientes
+                <i class="bi bi-people-fill"></i>
+                Clientes
             </a>
 
-            {% endif %}
-
-            <a href="#busca">
-                🔎 Busca Avançada
+            <a href="/ctos/">
+                <i class="bi bi-hdd-network-fill"></i>
+                CTOs
             </a>
 
-            {% if eh_admin %}
+            <a href="/planos/">
+                <i class="bi bi-wifi"></i>
+                Planos
+            </a>
 
             <hr>
 
-            <h6 class="text-center text-light">
-                ADMINISTRAÇÃO
-            </h6>
-
-            <a href="/admin/">
-                ⚙ Administração
+            <!-- FINANCEIRO -->
+            <a href="/financeiro/">
+                <i class="bi bi-cash-stack"></i>
+                Mensalidades
             </a>
 
+            <a href="/financeiro/inadimplentes/">
+                <i class="bi bi-exclamation-circle-fill"></i>
+                Inadimplentes
+            </a>
+
+            <a href="/financeiro/fluxo/">
+                <i class="bi bi-graph-up-arrow"></i>
+                Fluxo de Caixa
+            </a>
+
+            <a href="/financeiro/dashboard/">
+                <i class="bi bi-bar-chart-fill"></i>
+                Dashboard Financeiro
+            </a>
+
+            <hr>
+
+            <!-- ADMINISTRAÇÃO -->
             <a href="/sistema/usuarios/">
-                👤 Usuários
+                <i class="bi bi-person-fill-gear"></i>
+                Usuários
             </a>
 
             <a href="/clientes/historico/">
-                📋 Histórico
+                <i class="bi bi-clock-history"></i>
+                Histórico
             </a>
 
-            <a href="/clientes/exportar/pdf/">
-                📄 Clientes PDF
+            <a href="#">
+                <i class="bi bi-file-earmark-text-fill"></i>
+                Relatórios
             </a>
 
-            <a href="/ctos/exportar/pdf/">
-                📄 CTOs PDF
+            <a href="#">
+                <i class="bi bi-gear-fill"></i>
+                Configurações
             </a>
 
-            <a href="/sistema/backups/">
-                💾 Backup do Sistema
+            <a href="#">
+                <i class="bi bi-database-fill"></i>
+                Backup
             </a>
-
-            {% endif %}
 
             <hr>
 
-            <form action="/logout/" method="post">
+            <div class="text-center text-white mt-4">
 
-                {% csrf_token %}
+                <small style="font-size:10px;">
 
-                <button
-                    type="submit"
-                    class="btn btn-danger w-100"
-                >
-                    🚪 Sair
-                </button>
+                    CTO Manager PRO
 
-            </form>
+                    <br>
+
+                    Versão 1.0
+
+                </small>
+
+            </div>
+
+            <hr>
+
+            <a href="{% url 'logout' %}">
+                <i class="bi bi-box-arrow-right"></i>
+                Sair
+            </a>
 
         </div>
 
-        <div class="col-md-10 p-4">
+        <div class="main">
 
-            {% if not eh_tecnico %}
+            <div class="topbar">
 
-            <div class="dashboard-header">
+                <div>
 
-                <div class="row align-items-center">
+                    <h2 class="mb-0">
 
-                    <div class="col-md-8">
+                        Dashboard
 
-                        <h2 class="mb-0">
+                    </h2>
 
-                            📡 CTO MANAGER PRO
+                    <small id="dataAtual">
 
-                        </h2>
+                        Carregando data...
 
-                        <small class="text-muted">
+                    </small>
 
-                            Painel Operacional da Rede
+                </div>
+
+                <div class="d-flex align-items-center gap-3">
+
+                    <div style="width:200px;">
+
+                        <input
+                            type="text"
+                            class="form-control"
+                            placeholder="Pesquisar..."
+                            style="font-size:12px;"
+                        >
+
+                    </div>
+
+                    <button
+                        class="btn btn-light position-relative">
+
+                        <i class="bi bi-bell-fill" style="font-size:14px;"></i>
+
+                        <span
+                            class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                            style="font-size:9px;">
+
+                            0
+
+                        </span>
+
+                    </button>
+
+                    <div class="text-end" style="font-size:12px;">
+
+                        <strong>
+
+                            {{ request.user.username }}
+
+                        </strong>
+
+                        <br>
+
+                        <small id="relogio" style="font-size:11px;">
 
                         </small>
 
                     </div>
 
-                    <div class="col-md-4 text-end">
+                    <div class="user-avatar">
 
-                        <strong>
-
-                            👤 {{ request.user.username }}
-
-                        </strong>
+                        {{ request.user.username|first|upper }}
 
                     </div>
 
@@ -348,64 +926,78 @@
 
             </div>
 
-            <div class="row">
+            {% if not eh_tecnico %}
 
-                <div class="col-md-3 mb-3">
-                    <div class="card card-dashboard bg-cto text-white p-3">
-                        <div class="icon-bg">📦</div>
-                        <h5>Total de CTOs</h5>
-                        <h2>{{ total_ctos }}</h2>
-                    </div>
+            <div class="row g-2 dashboard-cards justify-content-between">
+
+                <div class="col-xl-3 col-lg-3 col-md-6 col-sm-6 mb-2">
+                    <a href="/ctos/" class="text-decoration-none d-block">
+                        <div class="card card-dashboard bg-cto text-white p-3">
+                            <div class="icon-bg">📦</div>
+                            <h5>Total de CTOs</h5>
+                            <h2>{{ total_ctos }}</h2>
+                        </div>
+                    </a>
                 </div>
 
-                <div class="col-md-3 mb-3">
-                    <div class="card card-dashboard bg-cliente text-white p-3">
-                        <div class="icon-bg">👥</div>
-                        <h5>Total de Clientes</h5>
-                        <h2>{{ total_clientes }}</h2>
-                    </div>
+                <div class="col-xl-3 col-lg-3 col-md-6 col-sm-6 mb-2">
+                    <a href="/clientes/" class="text-decoration-none d-block">
+                        <div class="card card-dashboard bg-cliente text-white p-3">
+                            <div class="icon-bg">👥</div>
+                            <h5>Total de Clientes</h5>
+                            <h2>{{ total_clientes }}</h2>
+                        </div>
+                    </a>
                 </div>
 
-                <div class="col-md-3 mb-3">
-                    <div class="card card-dashboard bg-ocupada text-white p-3">
-                        <div class="icon-bg">🔌</div>
-                        <h5>CTOs Ocupadas</h5>
-                        <h2>{{ ctos_ocupadas }}</h2>
-                    </div>
+                <div class="col-xl-3 col-lg-3 col-md-6 col-sm-6 mb-2">
+                    <a href="/ctos/" class="text-decoration-none d-block">
+                        <div class="card card-dashboard bg-ocupada text-white p-3">
+                            <div class="icon-bg">🔌</div>
+                            <h5>CTOs Ocupadas</h5>
+                            <h2>{{ ctos_ocupadas }}</h2>
+                        </div>
+                    </a>
                 </div>
 
-                <div class="col-md-3 mb-3">
-                    <div class="card card-dashboard bg-porta text-white p-3">
-                        <div class="icon-bg">🚪</div>
-                        <h5>Portas Livres</h5>
-                        <h2>{{ portas_livres }}</h2>
-                    </div>
+                <div class="col-xl-3 col-lg-3 col-md-6 col-sm-6 mb-2">
+                    <a href="/ctos/" class="text-decoration-none d-block">
+                        <div class="card card-dashboard bg-porta text-white p-3">
+                            <div class="icon-bg">🚪</div>
+                            <h5>Portas Livres</h5>
+                            <h2>{{ portas_livres }}</h2>
+                        </div>
+                    </a>
                 </div>
 
             </div>
 
-            <div class="row mt-3">
+            <div class="row g-2 dashboard-cards justify-content-between">
 
-                <div class="col-md-3 mb-3">
-                    <div class="card card-dashboard bg-livre text-white p-3">
-                        <div class="icon-bg">✅</div>
-                        <h5>Rede Livre</h5>
-                        <h2>{{ percentual_livre }}%</h2>
-                    </div>
+                <div class="col-xl-3 col-lg-3 col-md-6 col-sm-6 mb-2">
+                    <a href="/ctos/" class="text-decoration-none d-block">
+                        <div class="card card-dashboard bg-livre text-white p-3">
+                            <div class="icon-bg">✅</div>
+                            <h5>Rede Livre</h5>
+                            <h2>{{ percentual_livre }}%</h2>
+                        </div>
+                    </a>
                 </div>
 
-                <div class="col-md-3 mb-3">
-                    <div class="card card-dashboard bg-rede text-white p-3">
-                        <div class="icon-bg">❌</div>
-                        <h5>Rede Ocupada</h5>
-                        <h2>{{ percentual_ocupado }}%</h2>
-                    </div>
+                <div class="col-xl-3 col-lg-3 col-md-6 col-sm-6 mb-2">
+                    <a href="/ctos/" class="text-decoration-none d-block">
+                        <div class="card card-dashboard bg-rede text-white p-3">
+                            <div class="icon-bg">❌</div>
+                            <h5>Rede Ocupada</h5>
+                            <h2>{{ percentual_ocupado }}%</h2>
+                        </div>
+                    </a>
                 </div>
 
-                <div class="col-md-3 mb-3">
+                <div class="col-xl-3 col-lg-3 col-md-6 col-sm-6 mb-2">
 
                     <a href="/ctos-lotadas/"
-                       style="text-decoration:none;">
+                       style="text-decoration:none;" class="d-block">
 
                         <div class="card card-dashboard bg-lotada text-white p-3">
 
@@ -421,81 +1013,557 @@
 
                 </div>
 
-                <div class="col-md-3 mb-3">
-                    <div class="card card-dashboard bg-capacidade text-white p-3">
-                        <div class="icon-bg">📊</div>
-                        <h5>Capacidade Total</h5>
-                        <h2>{{ portas_livres|add:total_clientes }}</h2>
-                    </div>
+                <div class="col-xl-3 col-lg-3 col-md-6 col-sm-6 mb-2">
+                    <a href="/ctos/" class="text-decoration-none d-block">
+                        <div class="card card-dashboard bg-capacidade text-white p-3">
+                            <div class="icon-bg">📊</div>
+                            <h5>Capacidade Total</h5>
+                            <h2>{{ portas_livres|add:total_clientes }}</h2>
+                        </div>
+                    </a>
                 </div>
 
             </div>
 
-            {% if eh_admin %}
+            <!-- ========================= -->
+            <!-- ATALHOS RÁPIDOS -->
+            <!-- ========================= -->
 
-            <div class="card shadow mt-4">
-
-                <div class="card-header bg-dark text-white">
-
-                    <h4 class="mb-0">
-
-                        📋 Últimas Movimentações
-
-                    </h4>
-
-                </div>
+            <div class="card mt-4">
 
                 <div class="card-body">
 
-                    <div class="table-responsive">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
 
-                        <table class="table table-striped">
+                        <h5 class="mb-0" style="font-size:15px;">
 
-                            <thead>
+                            🚀 Acesso Rápido
 
-                                <tr>
+                        </h5>
 
-                                    <th>Data</th>
+                        <small class="text-muted" style="font-size:11px;">
 
-                                    <th>Usuário</th>
+                            Funções mais utilizadas
 
-                                    <th>Ação</th>
+                        </small>
 
-                                    <th>Observação</th>
+                    </div>
 
-                                </tr>
+                    <div class="row g-2">
 
-                            </thead>
+                        <div class="col-lg-3 col-md-4 col-6">
 
-                            <tbody>
+                            <a href="/clientes/" class="text-decoration-none">
 
-                            {% for mov in ultimas_movimentacoes %}
+                                <div class="card text-center p-0 h-100">
 
-                                <tr>
+                                    <div class="card-body">
 
-                                    <td>
-                                        {{ mov.data|date:"d/m/Y H:i" }}
-                                    </td>
+                                        <i class="bi bi-people-fill text-primary"></i>
 
-                                    <td>
-                                        {{ mov.usuario }}
-                                    </td>
+                                        <h6>
 
-                                    <td>
-                                        {{ mov.acao }}
-                                    </td>
+                                            Clientes
 
-                                    <td>
-                                        {{ mov.observacao }}
-                                    </td>
+                                        </h6>
 
-                                </tr>
+                                    </div>
 
-                            {% endfor %}
+                                </div>
 
-                            </tbody>
+                            </a>
 
-                        </table>
+                        </div>
+
+                        <div class="col-lg-3 col-md-4 col-6">
+
+                            <a href="/ctos/" class="text-decoration-none">
+
+                                <div class="card text-center p-0 h-100">
+
+                                    <div class="card-body">
+
+                                        <i class="bi bi-hdd-network-fill text-success"></i>
+
+                                        <h6>
+
+                                            CTOs
+
+                                        </h6>
+
+                                    </div>
+
+                                </div>
+
+                            </a>
+
+                        </div>
+
+                        <div class="col-lg-3 col-md-4 col-6">
+
+                            <a href="/planos/" class="text-decoration-none">
+
+                                <div class="card text-center p-0 h-100">
+
+                                    <div class="card-body">
+
+                                        <i class="bi bi-router-fill text-warning"></i>
+
+                                        <h6>
+
+                                            Planos
+
+                                        </h6>
+
+                                    </div>
+
+                                </div>
+
+                            </a>
+
+                        </div>
+
+                        <div class="col-lg-3 col-md-4 col-6">
+
+                            <a href="/financeiro/" class="text-decoration-none">
+
+                                <div class="card text-center p-0 h-100">
+
+                                    <div class="card-body">
+
+                                        <i class="bi bi-cash-stack text-danger"></i>
+
+                                        <h6>
+
+                                            Financeiro
+
+                                        </h6>
+
+                                    </div>
+
+                                </div>
+
+                            </a>
+
+                        </div>
+
+                        <div class="col-lg-3 col-md-4 col-6">
+
+                            <a href="/financeiro/inadimplentes/" class="text-decoration-none">
+
+                                <div class="card text-center p-0 h-100">
+
+                                    <div class="card-body">
+
+                                        <i class="bi bi-exclamation-triangle-fill text-danger"></i>
+
+                                        <h6>
+
+                                            Inadimplentes
+
+                                        </h6>
+
+                                    </div>
+
+                                </div>
+
+                            </a>
+
+                        </div>
+
+                        <div class="col-lg-3 col-md-4 col-6">
+
+                            <a href="/financeiro/fluxo/" class="text-decoration-none">
+
+                                <div class="card text-center p-0 h-100">
+
+                                    <div class="card-body">
+
+                                        <i class="bi bi-graph-up-arrow text-success"></i>
+
+                                        <h6>
+
+                                            Fluxo de Caixa
+
+                                        </h6>
+
+                                    </div>
+
+                                </div>
+
+                            </a>
+
+                        </div>
+
+                        <div class="col-lg-3 col-md-4 col-6">
+
+                            <a href="/clientes/historico/" class="text-decoration-none">
+
+                                <div class="card text-center p-0 h-100">
+
+                                    <div class="card-body">
+
+                                        <i class="bi bi-clock-history text-info"></i>
+
+                                        <h6>
+
+                                            Histórico
+
+                                        </h6>
+
+                                    </div>
+
+                                </div>
+
+                            </a>
+
+                        </div>
+
+                        <div class="col-lg-3 col-md-4 col-6">
+
+                            <a href="/admin/" class="text-decoration-none">
+
+                                <div class="card text-center p-0 h-100">
+
+                                    <div class="card-body">
+
+                                        <i class="bi bi-gear-fill text-secondary"></i>
+
+                                        <h6>
+
+                                            Administração
+
+                                        </h6>
+
+                                    </div>
+
+                                </div>
+
+                            </a>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- ====================================== -->
+            <!-- RESUMO GERAL -->
+            <!-- ====================================== -->
+
+            <div class="card mt-4">
+
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+
+                        <h5 style="font-size:15px;">
+
+                            📈 Resumo Geral da Rede
+
+                        </h5>
+
+                        <small class="text-muted" style="font-size:11px;">
+
+                            Indicadores Operacionais
+
+                        </small>
+
+                    </div>
+
+                    <div class="row g-2">
+
+                        <div class="col-md-4">
+
+                            <div class="card border-success">
+
+                                <div class="card-body" style="padding:10px 14px;">
+
+                                    <h6 class="text-success" style="font-size:12px;">
+
+                                        Clientes Ativos
+
+                                    </h6>
+
+                                    <h2 style="font-size:18px;">
+
+                                        --
+
+                                    </h2>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div class="col-md-4">
+
+                            <div class="card border-danger">
+
+                                <div class="card-body" style="padding:10px 14px;">
+
+                                    <h6 class="text-danger" style="font-size:12px;">
+
+                                        Clientes Suspensos
+
+                                    </h6>
+
+                                    <h2 style="font-size:18px;">
+
+                                        --
+
+                                    </h2>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div class="col-md-4">
+
+                            <div class="card border-primary">
+
+                                <div class="card-body" style="padding:10px 14px;">
+
+                                    <h6 class="text-primary" style="font-size:12px;">
+
+                                        Receita Mensal
+
+                                    </h6>
+
+                                    <h2 style="font-size:18px;">
+
+                                        R$ --
+
+                                    </h2>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div class="col-md-4">
+
+                            <div class="card border-warning">
+
+                                <div class="card-body" style="padding:10px 14px;">
+
+                                    <h6 class="text-warning" style="font-size:12px;">
+
+                                        Mensalidades em Aberto
+
+                                    </h6>
+
+                                    <h2 style="font-size:18px;">
+
+                                        --
+
+                                    </h2>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div class="col-md-4">
+
+                            <div class="card border-danger">
+
+                                <div class="card-body" style="padding:10px 14px;">
+
+                                    <h6 class="text-danger" style="font-size:12px;">
+
+                                        Inadimplentes
+
+                                    </h6>
+
+                                    <h2 style="font-size:18px;">
+
+                                        --
+
+                                    </h2>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div class="col-md-4">
+
+                            <div class="card border-info">
+
+                                <div class="card-body" style="padding:10px 14px;">
+
+                                    <h6 class="text-info" style="font-size:12px;">
+
+                                        Utilização da Rede
+
+                                    </h6>
+
+                                    <h2 style="font-size:18px;">
+
+                                        {{ percentual_ocupado }}%
+
+                                    </h2>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="row mt-4">
+
+                <div class="col-lg-8">
+
+                    <div class="card shadow h-100">
+
+                        <div class="card-header bg-primary text-white">
+
+                            <div class="d-flex justify-content-between align-items-center">
+
+                                <h5 class="mb-0">
+
+                                    <i class="bi bi-clock-history"></i>
+
+                                    Últimas Movimentações
+
+                                </h5>
+
+                                <span class="badge bg-light text-dark" style="font-size:10px;">
+
+                                    Sistema
+
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                        <div class="card-body" style="padding:10px 14px;">
+
+                            <div class="table-responsive">
+
+                                <table class="table table-striped">
+
+                                    <thead>
+
+                                        <tr>
+
+                                            <th>Data</th>
+
+                                            <th>Usuário</th>
+
+                                            <th>Ação</th>
+
+                                            <th>Observação</th>
+
+                                        </tr>
+
+                                    </thead>
+
+                                    <tbody>
+
+                                    {% for mov in ultimas_movimentacoes %}
+
+                                        <tr>
+
+                                            <td>
+                                                {{ mov.data|date:"d/m/Y H:i" }}
+                                            </td>
+
+                                            <td>
+                                                {{ mov.usuario }}
+                                            </td>
+
+                                            <td>
+                                                {{ mov.acao }}
+                                            </td>
+
+                                            <td>
+                                                {{ mov.observacao }}
+                                            </td>
+
+                                        </tr>
+
+                                    {% endfor %}
+
+                                    </tbody>
+
+                                </table>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="col-lg-4">
+
+                    <div class="card shadow h-100">
+
+                        <div class="card-header bg-danger text-white">
+
+                            <h5 class="mb-0">
+
+                                🚨 CTOs Lotadas
+
+                            </h5>
+
+                        </div>
+
+                        <div class="card-body">
+
+                            {% if quantidade_ctos_lotadas > 0 %}
+
+                            <div class="alert alert-danger">
+
+                                Existem
+
+                                <strong>
+
+                                    {{ quantidade_ctos_lotadas }}
+
+                                </strong>
+
+                                CTOs totalmente ocupadas.
+
+                            </div>
+
+                            <a href="/ctos-lotadas/"
+
+                               class="btn btn-danger w-100">
+
+                                Ver CTOs
+
+                            </a>
+
+                            {% else %}
+
+                            <div class="alert alert-success">
+
+                                Nenhuma CTO lotada.
+
+                            </div>
+
+                            {% endif %}
+
+                        </div>
 
                     </div>
 
@@ -509,11 +1577,23 @@
 
                 <div class="col-md-6">
 
-                    <div class="card p-3">
+                    <div class="card shadow h-100">
 
-                        <h4>Ocupação da Rede</h4>
+                        <div class="card-header bg-white">
 
-                        <canvas id="ocupacaoChart"></canvas>
+                            <h5 style="font-size:13px;">
+
+                                📊 Ocupação Geral da Rede
+
+                            </h5>
+
+                        </div>
+
+                        <div class="card-body" style="padding:10px 14px;">
+
+                            <canvas id="ocupacaoChart" style="max-height:180px;"></canvas>
+
+                        </div>
 
                     </div>
 
@@ -521,11 +1601,23 @@
 
                 <div class="col-md-6">
 
-                    <div class="card p-3">
+                    <div class="card shadow h-100">
 
-                        <h4>Total de Clientes</h4>
+                        <div class="card-header bg-white">
 
-                        <canvas id="clientesChart"></canvas>
+                            <h5 style="font-size:13px;">
+
+                                👥 Crescimento de Clientes
+
+                            </h5>
+
+                        </div>
+
+                        <div class="card-body" style="padding:10px 14px;">
+
+                            <canvas id="clientesChart" style="max-height:180px;"></canvas>
+
+                        </div>
 
                     </div>
 
@@ -533,57 +1625,390 @@
 
             </div>
 
-            {% endif %}
+            <!-- ================================================= -->
+            <!-- PAINEL OPERACIONAL -->
+            <!-- ================================================= -->
 
-            <div class="card mt-4 p-4 shadow" id="busca">
+            <div class="row mt-4">
 
-                {% if eh_tecnico %}
-                <h4>🔎 Buscar CTO ou Rua</h4>
-                {% else %}
-                <h4>🔎 Busca por CTO ou Cliente</h4>
-                {% endif %}
+                <!-- Clientes Recentes -->
+                <div class="col-lg-3 mb-4">
 
-                <form method="GET">
+                    <div class="card h-100 shadow-sm">
 
-                    <div class="row">
+                        <div class="card-header bg-primary text-white">
 
-                        <div class="col-md-10">
-
-                            <input
-                                type="text"
-                                name="busca"
-                                class="form-control"
-                                {% if eh_tecnico %}
-                                placeholder="Digite a CTO ou Rua"
-                                {% else %}
-                                placeholder="Digite o nome da CTO ou do Cliente"
-                                {% endif %}
-                                value="{{ request.GET.busca }}"
-                            >
+                            <h6 class="mb-0" style="font-size:12px;">
+                                👥 Clientes Recentes
+                            </h6>
 
                         </div>
 
-                        <div class="col-md-2">
+                        <div class="card-body" style="padding:8px 12px;">
 
-                            <button class="btn btn-primary w-100">
-                                Buscar
-                            </button>
+                            <ul class="list-group list-group-flush">
+
+                                <li class="list-group-item" style="font-size:12px; padding:6px 8px;">
+                                    Em desenvolvimento
+                                </li>
+
+                                <li class="list-group-item" style="font-size:12px; padding:6px 8px;">
+                                    Em desenvolvimento
+                                </li>
+
+                                <li class="list-group-item" style="font-size:12px; padding:6px 8px;">
+                                    Em desenvolvimento
+                                </li>
+
+                            </ul>
 
                         </div>
 
                     </div>
 
-                </form>
+                </div>
+
+                <!-- Financeiro -->
+
+                <div class="col-lg-3 mb-4">
+
+                    <div class="card h-100 shadow-sm">
+
+                        <div class="card-header bg-success text-white">
+
+                            <h6 class="mb-0" style="font-size:12px;">
+                                💰 Financeiro
+                            </h6>
+
+                        </div>
+
+                        <div class="card-body" style="padding:10px 14px;">
+
+                            <h3 class="text-success" style="font-size:20px;">
+
+                                R$ --
+
+                            </h3>
+
+                            <small class="text-muted" style="font-size:11px;">
+
+                                Receita do mês
+
+                            </small>
+
+                            <hr style="margin:6px 0;">
+
+                            <p class="mb-0" style="font-size:12px;">
+
+                                Mensalidades em aberto
+
+                            </p>
+
+                            <strong style="font-size:14px;">
+
+                                --
+
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- Alertas -->
+
+                <div class="col-lg-3 mb-4">
+
+                    <div class="card h-100 shadow-sm">
+
+                        <div class="card-header bg-warning">
+
+                            <h6 class="mb-0" style="font-size:12px;">
+
+                                ⚠ Alertas
+
+                            </h6>
+
+                        </div>
+
+                        <div class="card-body" style="padding:8px 12px;">
+
+                            <div class="alert alert-warning mb-1" style="font-size:12px; padding:6px 10px;">
+
+                                Nenhum alerta crítico.
+
+                            </div>
+
+                            <div class="alert alert-success mb-0" style="font-size:12px; padding:6px 10px;">
+
+                                Sistema funcionando normalmente.
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- Atividade -->
+
+                <div class="col-lg-3 mb-4">
+
+                    <div class="card h-100 shadow-sm">
+
+                        <div class="card-header bg-dark text-white">
+
+                            <h6 class="mb-0" style="font-size:12px;">
+
+                                📋 Atividade
+
+                            </h6>
+
+                        </div>
+
+                        <div class="card-body" style="padding:8px 12px;">
+
+                            <ul class="list-group list-group-flush">
+
+                                <li class="list-group-item" style="font-size:12px; padding:6px 8px;">
+
+                                    Dashboard atualizado.
+
+                                </li>
+
+                                <li class="list-group-item" style="font-size:12px; padding:6px 8px;">
+
+                                    Rede sincronizada.
+
+                                </li>
+
+                                <li class="list-group-item" style="font-size:12px; padding:6px 8px;">
+
+                                    Banco operacional.
+
+                                </li>
+
+                            </ul>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- ================================================= -->
+            <!-- BUSCA RÁPIDA -->
+            <!-- ================================================= -->
+
+            <div class="card mt-4 shadow">
+
+                <div class="card-header bg-white border-0 pt-3">
+
+                    <div class="d-flex justify-content-between align-items-center">
+
+                        <div>
+
+                            <h5 class="mb-0" style="font-size:15px;">
+
+                                🔍 Busca Inteligente
+
+                            </h5>
+
+                            <small class="text-muted" style="font-size:11px;">
+
+                                Localize clientes, CTOs e ruas rapidamente.
+
+                            </small>
+
+                        </div>
+
+                        <span class="badge bg-primary fs-6" style="font-size:12px;">
+
+                            Pesquisa Geral
+
+                        </span>
+
+                    </div>
+
+                </div>
+
+                <div class="card-body" style="padding:10px 16px;">
+
+                    <form method="GET">
+
+                        <div class="row">
+
+                            <div class="col-md-10">
+
+                                <input
+
+                                    type="text"
+
+                                    class="form-control form-control-lg"
+
+                                    name="busca"
+
+                                    value="{{ request.GET.busca }}"
+
+                                    {% if eh_tecnico %}
+                                    placeholder="Digite a CTO ou a Rua..."
+                                    {% else %}
+                                    placeholder="Digite Cliente, CTO ou Rua..."
+                                    {% endif %}
+                                    style="font-size:13px; padding:6px 14px;"
+
+                                >
+
+                            </div>
+
+                            <div class="col-md-2 d-grid">
+
+                                <button
+                                    class="btn btn-primary btn-lg" style="font-size:13px; padding:6px 12px;">
+
+                                    <i class="bi bi-search"></i>
+
+                                    Buscar
+
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+            <!-- =========================================== -->
+            <!-- RESUMO DA PESQUISA -->
+            <!-- =========================================== -->
+
+            <div class="row mt-4">
+
+                <div class="col-md-3">
+
+                    <div class="card text-center">
+
+                        <div class="card-body" style="padding:8px 6px;">
+
+                            <i class="bi bi-router-fill text-primary"
+                               style="font-size:28px;"></i>
+
+                            <h6 class="mt-1 mb-0" style="font-size:11px;">
+
+                                CTOs Encontradas
+
+                            </h6>
+
+                            <h3 style="font-size:18px;">
+
+                                --
+
+                            </h3>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="col-md-3">
+
+                    <div class="card text-center">
+
+                        <div class="card-body" style="padding:8px 6px;">
+
+                            <i class="bi bi-people-fill text-success"
+                               style="font-size:28px;"></i>
+
+                            <h6 class="mt-1 mb-0" style="font-size:11px;">
+
+                                Clientes
+
+                            </h6>
+
+                            <h3 style="font-size:18px;">
+
+                                --
+
+                            </h3>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="col-md-3">
+
+                    <div class="card text-center">
+
+                        <div class="card-body" style="padding:8px 6px;">
+
+                            <i class="bi bi-door-open-fill text-warning"
+                               style="font-size:28px;"></i>
+
+                            <h6 class="mt-1 mb-0" style="font-size:11px;">
+
+                                Vagas Livres
+
+                            </h6>
+
+                            <h3 style="font-size:18px;">
+
+                                --
+
+                            </h3>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="col-md-3">
+
+                    <div class="card text-center">
+
+                        <div class="card-body" style="padding:8px 6px;">
+
+                            <i class="bi bi-geo-alt-fill text-danger"
+                               style="font-size:28px;"></i>
+
+                            <h6 class="mt-1 mb-0" style="font-size:11px;">
+
+                                Ruas
+
+                            </h6>
+
+                            <h3 style="font-size:18px;">
+
+                                --
+
+                            </h3>
+
+                        </div>
+
+                    </div>
+
+                </div>
 
             </div>
 
             {% if mapas_ctos %}
 
-            <div class="card mt-4 p-4">
+            <div class="card mt-4 p-3">
 
-                <h4>📦 CTOs Encontradas</h4>
+                <h5 style="font-size:15px;">📦 CTOs Encontradas</h5>
 
-                <div class="alert alert-info">
+                <div class="alert alert-info" style="font-size:12px; padding:6px 10px;">
 
                     <strong>
 
@@ -597,23 +2022,23 @@
 
                 {% for item in mapas_ctos %}
 
-                <div class="border rounded p-3 mb-3">
+                <div class="border rounded p-2 mb-2">
 
-                    <h5>
+                    <h6 style="font-size:14px;">
 
                         {{ item.cto.nome }}
 
                         ({{ item.cto.portas_ocupadas }}/{{ item.cto.portas_total }})
 
-                        <span class="badge bg-primary">
+                        <span class="badge bg-primary" style="font-size:10px;">
 
                             {{ item.vagas_livres }} vagas livres
 
                         </span>
 
-                    </h5>
+                    </h6>
 
-                    <p>
+                    <p style="font-size:12px; margin:4px 0;">
 
                         <strong>Rua:</strong>
 
@@ -621,11 +2046,13 @@
 
                     </p>
 
+                    <div style="margin:4px 0;">
+
                     {% for porta in item.portas %}
 
                         {% if porta.ocupada %}
 
-                            <span class="badge bg-danger">
+                            <span class="badge bg-danger" style="font-size:9px;">
 
                                 {{ porta.numero }}
 
@@ -633,7 +2060,7 @@
 
                         {% else %}
 
-                            <span class="badge bg-success">
+                            <span class="badge bg-success" style="font-size:9px;">
 
                                 {{ porta.numero }}
 
@@ -643,19 +2070,21 @@
 
                     {% endfor %}
 
-                    <hr>
+                    </div>
+
+                    <hr style="margin:6px 0;">
 
                     {% if eh_tecnico %}
-                    <h6>
+                    <h6 style="font-size:12px;">
                         Portas da CTO
                     </h6>
                     {% else %}
-                    <h6>
+                    <h6 style="font-size:12px;">
                         Clientes da CTO
                     </h6>
                     {% endif %}
 
-                    <table class="table table-sm">
+                    <table class="table table-sm" style="font-size:12px;">
 
                         <thead>
 
@@ -687,7 +2116,7 @@
 
                                     {% if cliente.ocupada %}
 
-                                        <span class="badge bg-danger">
+                                        <span class="badge bg-danger" style="font-size:9px;">
 
                                             Ocupada
 
@@ -695,7 +2124,7 @@
 
                                     {% else %}
 
-                                        <span class="badge bg-success">
+                                        <span class="badge bg-success" style="font-size:9px;">
 
                                             Livre
 
@@ -706,7 +2135,7 @@
                                 </td>
 
                                 {% if not eh_tecnico %}
-                                <td>
+                                <td style="font-size:12px;">
                                     {{ cliente.cliente }}
                                 </td>
                                 {% endif %}
@@ -729,65 +2158,65 @@
 
             {% if cto_encontrada %}
 
-            <div class="card mt-4 p-4">
+            <div class="card mt-4 p-3">
 
-                <h4>📦 CTO Encontrada</h4>
+                <h5 style="font-size:15px;">📦 CTO Encontrada</h5>
 
-                <p><strong>Nome:</strong> {{ cto_encontrada.nome }}</p>
+                <p style="font-size:13px; margin:2px 0;"><strong>Nome:</strong> {{ cto_encontrada.nome }}</p>
 
-                <p><strong>Tipo:</strong> {{ cto_encontrada.tipo }}</p>
+                <p style="font-size:13px; margin:2px 0;"><strong>Tipo:</strong> {{ cto_encontrada.tipo }}</p>
 
-                <p><strong>Rua:</strong> {{ cto_encontrada.rua }}</p>
+                <p style="font-size:13px; margin:2px 0;"><strong>Rua:</strong> {{ cto_encontrada.rua }}</p>
 
-                <p><strong>Portas Totais:</strong> {{ cto_encontrada.portas_total }}</p>
+                <p style="font-size:13px; margin:2px 0;"><strong>Portas Totais:</strong> {{ cto_encontrada.portas_total }}</p>
 
-                <p><strong>Portas Ocupadas:</strong> {{ cto_encontrada.portas_ocupadas }}</p>
+                <p style="font-size:13px; margin:2px 0;"><strong>Portas Ocupadas:</strong> {{ cto_encontrada.portas_ocupadas }}</p>
 
-                <p><strong>Portas Livres:</strong> {{ portas_livres_cto }}</p>
+                <p style="font-size:13px; margin:2px 0;"><strong>Portas Livres:</strong> {{ portas_livres_cto }}</p>
 
             </div>
 
-            <div class="card mt-4 p-4">
+            <div class="card mt-4 p-3">
 
-                <h4>🔌 Mapa Visual das Portas</h4>
+                <h5 style="font-size:15px;">🔌 Mapa Visual das Portas</h5>
 
                 <div class="row">
 
                     {% for porta in mapa_portas %}
 
-                        <div class="col-6 col-md-2 mb-3">
+                        <div class="col-6 col-md-2 mb-2">
 
                             {% if porta.status == "ocupada" %}
 
-                                <div class="card bg-danger text-white text-center p-3 porta-card">
+                                <div class="card bg-danger text-white text-center p-2 porta-card" style="border-radius:10px;">
 
-                                    <strong>Porta {{ porta.numero }}</strong>
+                                    <strong style="font-size:12px;">Porta {{ porta.numero }}</strong>
 
                                     <br>
 
-                                    🔴 Ocupada
+                                    <span style="font-size:10px;">🔴 Ocupada</span>
 
-                                    <br><br>
+                                    <br>
 
                                     {% if not eh_tecnico %}
-                                    {{ porta.cliente }}
+                                    <span style="font-size:11px;">{{ porta.cliente }}</span>
                                     {% endif %}
 
                                 </div>
 
                             {% else %}
 
-                                <div class="card bg-success text-white text-center p-3 porta-card">
+                                <div class="card bg-success text-white text-center p-2 porta-card" style="border-radius:10px;">
 
-                                    <strong>Porta {{ porta.numero }}</strong>
+                                    <strong style="font-size:12px;">Porta {{ porta.numero }}</strong>
 
                                     <br>
 
-                                    🟢 Livre
+                                    <span style="font-size:10px;">🟢 Livre</span>
 
-                                    <br><br>
+                                    <br>
 
-                                    Disponível
+                                    <span style="font-size:10px;">Disponível</span>
 
                                 </div>
 
@@ -803,9 +2232,9 @@
 
             {% if not eh_tecnico %}
 
-            <div class="card mt-4 p-4">
+            <div class="card mt-4 p-3">
 
-                <h4>👥 Clientes desta CTO</h4>
+                <h5 style="font-size:15px;">👥 Clientes desta CTO</h5>
 
                 {% if clientes_cto %}
 
@@ -813,7 +2242,7 @@
 
                         {% for cliente in clientes_cto %}
 
-                            <li class="list-group-item">
+                            <li class="list-group-item" style="font-size:13px; padding:6px 10px;">
                                 {{ cliente.nome }} - Porta {{ cliente.porta }}
                             </li>
 
@@ -823,7 +2252,7 @@
 
                 {% else %}
 
-                    <p>Nenhum cliente vinculado a esta CTO.</p>
+                    <p style="font-size:13px;">Nenhum cliente vinculado a esta CTO.</p>
 
                 {% endif %}
 
@@ -833,13 +2262,13 @@
 
             {% if clientes_encontrados and not eh_tecnico %}
 
-<div class="card mt-4 p-4">
+<div class="card mt-4 p-3">
 
-    <h4>👥 Clientes Encontrados</h4>
+    <h5 style="font-size:15px;">👥 Clientes Encontrados</h5>
 
     <div class="table-responsive">
 
-        <table class="table table-striped table-hover">
+        <table class="table table-striped table-hover" style="font-size:13px;">
 
             <thead class="table-dark">
 
@@ -901,8 +2330,23 @@ new Chart(ocupacao, {
     data: {
         labels: ['Livres', 'Ocupadas'],
         datasets: [{
-            data: [{{ portas_livres }}, {{ total_clientes }}]
+            data: [{{ portas_livres }}, {{ total_clientes }}],
+            backgroundColor: ['#22C55E', '#EF4444']
         }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    font: {
+                        size: 11
+                    }
+                }
+            }
+        }
     }
 });
 
@@ -914,11 +2358,79 @@ new Chart(clientes, {
         labels: ['Clientes'],
         datasets: [{
             label: 'Total',
-            data: [{{ total_clientes }}]
+            data: [{{ total_clientes }}],
+            backgroundColor: '#2563EB'
         }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                display: false
+            }
+        }
     }
 });
 </script>
+
+<script>
+
+function atualizarRelogio(){
+
+    const agora=new Date();
+
+    const hora=agora.toLocaleTimeString('pt-BR');
+
+    const data=agora.toLocaleDateString(
+
+        'pt-BR',
+
+        {
+
+            weekday:'long',
+
+            day:'2-digit',
+
+            month:'long',
+
+            year:'numeric'
+
+        }
+
+    );
+
+    document.getElementById('relogio').innerHTML=hora;
+
+    document.getElementById('dataAtual').innerHTML=data;
+
+}
+
+setInterval(
+
+    atualizarRelogio,
+
+    1000
+
+);
+
+atualizarRelogio();
+
+</script>
+
+<footer class="text-center mt-3 mb-2">
+
+    <small class="text-muted" style="font-size:11px;">
+
+        CTO Manager PRO © 2026
+
+        <br>
+
+        Desenvolvido para gerenciamento de redes FTTH
+
+    </small>
+
+</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 

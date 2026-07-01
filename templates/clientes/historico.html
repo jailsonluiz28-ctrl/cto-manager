@@ -1,0 +1,99 @@
+{% extends 'base/base.html' %}
+
+{% block title %}
+Histórico
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+
+<div class="card-header bg-dark text-white">
+
+<h3>
+
+📜 Histórico do Sistema
+
+</h3>
+
+</div>
+
+<div class="card-body">
+
+<div class="table-responsive">
+
+<table class="table table-striped">
+
+<thead>
+
+<tr>
+
+<th>Data</th>
+
+<th>Usuário</th>
+
+<th>Cliente</th>
+
+<th>Ação</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+{% for h in historicos %}
+
+<tr>
+
+<td>
+
+{{ h.data|date:"d/m/Y H:i" }}
+
+</td>
+
+<td>
+
+{{ h.usuario }}
+
+</td>
+
+<td>
+
+{{ h.cliente_nome }}
+
+</td>
+
+<td>
+
+{{ h.acao }}
+
+</td>
+
+</tr>
+
+{% empty %}
+
+<tr>
+
+<td colspan="4">
+
+Nenhum histórico.
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+</div>
+
+{% endblock %}

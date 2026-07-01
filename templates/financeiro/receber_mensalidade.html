@@ -1,0 +1,168 @@
+{% extends 'base/base.html' %}
+
+{% block title %}
+Receber Mensalidade
+{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid">
+
+<div class="card">
+
+<div class="card-header bg-success text-white">
+
+<h3>
+
+💰 Receber Mensalidade
+
+</h3>
+
+</div>
+
+<div class="card-body">
+
+<div class="row">
+
+<div class="col-md-6">
+
+<p>
+
+<strong>Cliente:</strong>
+
+{{ mensalidade.cliente.nome }}
+
+</p>
+
+<p>
+
+<strong>Competência:</strong>
+
+{{ mensalidade.competencia|date:"m/Y" }}
+
+</p>
+
+<p>
+
+<strong>Vencimento:</strong>
+
+{{ mensalidade.vencimento|date:"d/m/Y" }}
+
+</p>
+
+<p>
+
+<strong>Valor:</strong>
+
+<b class="text-success">
+
+R$ {{ mensalidade.valor }}
+
+</b>
+
+</p>
+
+<p>
+
+<strong>Status Atual:</strong>
+
+{{ mensalidade.get_status_display }}
+
+</p>
+
+</div>
+
+</div>
+
+<hr>
+
+<form method="POST">
+
+{% csrf_token %}
+
+<div class="row">
+
+<div class="col-md-4">
+
+<label>
+
+Data do Pagamento
+
+</label>
+
+<input
+type="date"
+name="data_pagamento"
+class="form-control"
+value="{{ hoje|date:'Y-m-d' }}"
+required>
+
+</div>
+
+<div class="col-md-4">
+
+<label>
+
+Forma de Pagamento
+
+</label>
+
+<select
+name="forma_pagamento"
+class="form-select"
+required>
+
+<option value="PIX">PIX</option>
+
+<option value="DINHEIRO">Dinheiro</option>
+
+<option value="CARTAO">Cartão</option>
+
+<option value="BOLETO">Boleto</option>
+
+<option value="TRANSFERENCIA">Transferência</option>
+
+</select>
+
+</div>
+
+</div>
+
+<br>
+
+<label>
+
+Observação
+
+</label>
+
+<textarea
+name="observacao"
+rows="4"
+class="form-control"></textarea>
+
+<br>
+
+<button class="btn btn-success">
+
+💰 Confirmar Recebimento
+
+</button>
+
+<a
+href="/financeiro/"
+class="btn btn-secondary">
+
+Cancelar
+
+</a>
+
+</form>
+
+</div>
+
+</div>
+
+</div>
+
+{% endblock %}

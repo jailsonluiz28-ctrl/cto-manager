@@ -1,0 +1,188 @@
+{% extends 'base/base.html' %}
+
+{% block title %}
+Planos
+{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <h2>🌐 Planos de Internet</h2>
+
+    <div>
+
+        <a href="/planos/novo/" class="btn btn-success">
+
+            ➕ Novo Plano
+
+        </a>
+
+    </div>
+
+</div>
+
+<div class="card mb-4">
+
+    <div class="card-body">
+
+        <form method="GET">
+
+            <div class="row">
+
+                <div class="col-md-10">
+
+                    <input
+                        type="text"
+                        name="busca"
+                        class="form-control"
+                        placeholder="Pesquisar plano..."
+                        value="{{ busca }}">
+
+                </div>
+
+                <div class="col-md-2">
+
+                    <button class="btn btn-primary w-100">
+
+                        🔍 Buscar
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+<div class="card">
+
+    <div class="card-body">
+
+        <div class="table-responsive">
+
+            <table class="table table-hover">
+
+                <thead class="table-dark">
+
+                    <tr>
+
+                        <th>Plano</th>
+
+                        <th>Velocidade</th>
+
+                        <th>Valor</th>
+
+                        <th>Status</th>
+
+                        <th width="180">Ações</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for plano in planos %}
+
+                    <tr>
+
+                        <td>
+
+                            {{ plano.nome }}
+
+                        </td>
+
+                        <td>
+
+                            {{ plano.velocidade }}
+
+                        </td>
+
+                        <td>
+
+                            R$ {{ plano.valor }}
+
+                        </td>
+
+                        <td>
+
+                            {% if plano.ativo %}
+
+                                <span class="badge bg-success">
+
+                                    Ativo
+
+                                </span>
+
+                            {% else %}
+
+                                <span class="badge bg-danger">
+
+                                    Inativo
+
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+                        <td>
+
+                            <a
+                                href="/planos/{{ plano.id }}/"
+                                class="btn btn-info btn-sm">
+
+                                👁
+
+                            </a>
+
+                            <a
+                                href="/planos/{{ plano.id }}/editar/"
+                                class="btn btn-warning btn-sm">
+
+                                ✏
+
+                            </a>
+
+                            <a
+                                href="/planos/{{ plano.id }}/excluir/"
+                                class="btn btn-danger btn-sm">
+
+                                🗑
+
+                            </a>
+
+                        </td>
+
+                    </tr>
+
+                    {% empty %}
+
+                    <tr>
+
+                        <td colspan="5" class="text-center">
+
+                            Nenhum plano cadastrado.
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

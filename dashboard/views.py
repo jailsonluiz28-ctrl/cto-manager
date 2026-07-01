@@ -1,6 +1,7 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.db.models import Q, F
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import logout
 from django.db import models
 import unicodedata
 import os
@@ -387,3 +388,10 @@ def lista_ctos_lotadas(request):
             'ctos_lotadas': ctos_lotadas
         }
     )
+
+
+def sair(request):
+
+    logout(request)
+
+    return redirect("login")

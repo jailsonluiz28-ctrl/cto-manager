@@ -48,6 +48,9 @@ INSTALLED_APPS = [
     'historico',
     'relatorios',
     'sistema',
+    'planos',
+    'financeiro',
+    'configuracoes',
 ]
 
 MIDDLEWARE = [
@@ -137,3 +140,5 @@ LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/login/'
 
 BACKUP_DIR = BASE_DIR / 'backups'
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

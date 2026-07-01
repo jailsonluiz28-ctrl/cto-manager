@@ -17,6 +17,7 @@ from .models import (
     HistoricoMovimentacao
 )
 from ctos.models import CTO
+from planos.models import PlanoInternet
 
 import openpyxl
 
@@ -74,15 +75,23 @@ def lista_clientes(request):
 def detalhe_cliente(request, cliente_id):
 
     cliente = get_object_or_404(
-        Cliente.objects.select_related('cto'),
+        Cliente.objects.select_related(
+            'cto',
+            'plano'
+        ),
         id=cliente_id
     )
+
+    historicos = HistoricoMovimentacao.objects.filter(
+        cliente_nome=cliente.nome
+    ).order_by('-data')
 
     return render(
         request,
         'clientes/detalhe_cliente.html',
         {
             'cliente': cliente,
+            'historicos': historicos,
         }
     )
 
@@ -97,7 +106,12 @@ def novo_cliente(request):
 
         if form.is_valid():
 
-            cliente = form.save()
+            cliente = form.save(commit=False)
+
+            if cliente.plano and not cliente.valor_mensalidade:
+                cliente.valor_mensalidade = cliente.plano.valor
+
+            cliente.save()
 
             HistoricoMovimentacao.objects.create(
                 usuario=request.user.username,
@@ -287,6 +301,10 @@ def editar_cliente(request, cliente_id):
 
     if request.method == 'POST':
 
+        cliente_antigo = Cliente.objects.get(
+            pk=cliente.pk
+        )
+
         form = ClienteForm(
             request.POST,
             instance=cliente
@@ -294,15 +312,42 @@ def editar_cliente(request, cliente_id):
 
         if form.is_valid():
 
-            cliente_editado = form.save()
+            cliente_editado = form.save(commit=False)
 
-            HistoricoMovimentacao.objects.create(
-                usuario=request.user.username,
-                cliente_nome=cliente_editado.nome,
-                cto_nome=cliente_editado.cto.nome,
-                porta=cliente_editado.porta,
-                acao='CLIENTE EDITADO'
-            )
+            if cliente_editado.plano and not cliente_editado.valor_mensalidade:
+                cliente_editado.valor_mensalidade = cliente_editado.plano.valor
+
+            cliente_editado.save()
+
+            if cliente_antigo.plano != cliente_editado.plano:
+
+                HistoricoMovimentacao.objects.create(
+                    usuario=request.user.username,
+                    cliente_nome=cliente_editado.nome,
+                    cto_nome=cliente_editado.cto.nome,
+                    porta=cliente_editado.porta,
+                    acao=f'PLANO ALTERADO: {cliente_antigo.plano} → {cliente_editado.plano}'
+                )
+
+            if cliente_antigo.cto != cliente_editado.cto or cliente_antigo.porta != cliente_editado.porta:
+
+                HistoricoMovimentacao.objects.create(
+                    usuario=request.user.username,
+                    cliente_nome=cliente_editado.nome,
+                    cto_nome=cliente_editado.cto.nome,
+                    porta=cliente_editado.porta,
+                    acao=f'CTO ALTERADA: {cliente_antigo.cto.nome}/{cliente_antigo.porta} → {cliente_editado.cto.nome}/{cliente_editado.porta}'
+                )
+
+            if cliente_antigo.valor_mensalidade != cliente_editado.valor_mensalidade:
+
+                HistoricoMovimentacao.objects.create(
+                    usuario=request.user.username,
+                    cliente_nome=cliente_editado.nome,
+                    cto_nome=cliente_editado.cto.nome,
+                    porta=cliente_editado.porta,
+                    acao=f'VALOR ALTERADO: R$ {cliente_antigo.valor_mensalidade} → R$ {cliente_editado.valor_mensalidade}'
+                )
 
             return redirect('/clientes/')
 

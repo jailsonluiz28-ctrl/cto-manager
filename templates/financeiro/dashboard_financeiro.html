@@ -1,0 +1,87 @@
+{% extends 'base/base.html' %}
+
+{% block title %}
+Dashboard Financeiro
+{% endblock %}
+
+{% block content %}
+
+<h2 class="mb-4">
+📊 Dashboard Financeiro
+</h2>
+
+<div class="row">
+
+    <div class="col-md-4 mb-3">
+        <div class="card border-success">
+            <div class="card-body text-center">
+                <h6>Total Recebido</h6>
+                <h2 class="text-success">
+                    R$ {{ total_recebido }}
+                </h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+        <div class="card border-warning">
+            <div class="card-body text-center">
+                <h6>Em Aberto</h6>
+                <h2 class="text-warning">
+                    R$ {{ total_aberto }}
+                </h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+        <div class="card border-danger">
+            <div class="card-body text-center">
+                <h6>Em Atraso</h6>
+                <h2 class="text-danger">
+                    R$ {{ total_atrasado }}
+                </h2>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="row">
+
+    <div class="col-md-4 mb-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6>Mensalidades Pagas</h6>
+                <h3>{{ quantidade_pagas }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6>Mensalidades em Aberto</h6>
+                <h3>{{ quantidade_abertas }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6>Mensalidades Atrasadas</h6>
+                <h3>{{ quantidade_atrasadas }}</h3>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<a href="/financeiro/" class="btn btn-secondary">
+
+← Voltar ao Financeiro
+
+</a>
+
+{% endblock %}

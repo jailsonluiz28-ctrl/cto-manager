@@ -1,0 +1,123 @@
+{% extends 'base/base.html' %}
+
+{% block title %}
+Fluxo de Caixa
+{% endblock %}
+
+{% block content %}
+
+<h2 class="mb-4">
+
+💰 Fluxo de Caixa
+
+</h2>
+
+<div class="row">
+
+<div class="col-md-3">
+
+<div class="card">
+
+<div class="card-body text-center">
+
+<h5>
+
+Recebido
+
+</h5>
+
+<h2 class="text-success">
+
+R$ {{ total_recebido }}
+
+</h2>
+
+</div>
+
+</div>
+
+</div>
+
+<div class="col-md-3">
+
+<div class="card">
+
+<div class="card-body text-center">
+
+<h5>
+
+Em Aberto
+
+</h5>
+
+<h2 class="text-warning">
+
+R$ {{ em_aberto }}
+
+</h2>
+
+</div>
+
+</div>
+
+</div>
+
+<div class="col-md-3">
+
+<div class="card">
+
+<div class="card-body text-center">
+
+<h5>
+
+Atrasadas
+
+</h5>
+
+<h2 class="text-danger">
+
+R$ {{ atrasadas }}
+
+</h2>
+
+</div>
+
+</div>
+
+</div>
+
+<div class="col-md-3">
+
+<div class="card">
+
+<div class="card-body text-center">
+
+<h5>
+
+Canceladas
+
+</h5>
+
+<h2>
+
+R$ {{ canceladas }}
+
+</h2>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<br>
+
+<a href="/financeiro/" class="btn btn-secondary">
+
+← Voltar
+
+</a>
+
+{% endblock %}

@@ -1,6 +1,7 @@
 from django import forms
 from .models import Cliente
 from ctos.models import CTO
+from planos.models import PlanoInternet
 
 
 class ClienteForm(forms.ModelForm):
@@ -10,6 +11,7 @@ class ClienteForm(forms.ModelForm):
         model = Cliente
 
         fields = [
+
             'nome',
             'tipo_pessoa',
             'cpf_cnpj',
@@ -28,6 +30,13 @@ class ClienteForm(forms.ModelForm):
             'login_pppoe',
             'senha_pppoe',
 
+            'plano',
+            'valor_mensalidade',
+            'dia_vencimento',
+
+            'data_ativacao',
+            'status',
+
             'cto',
             'porta',
 
@@ -35,6 +44,7 @@ class ClienteForm(forms.ModelForm):
             'tipo_equipamento',
 
             'observacao',
+
         ]
 
         widgets = {
@@ -102,6 +112,34 @@ class ClienteForm(forms.ModelForm):
                 attrs={'class': 'form-control'}
             ),
 
+            'plano': forms.Select(
+                attrs={'class': 'form-select'}
+            ),
+
+            'valor_mensalidade': forms.NumberInput(
+                attrs={
+                    'class': 'form-control',
+                    'readonly': 'readonly'
+                }
+            ),
+
+            'dia_vencimento': forms.Select(
+                attrs={'class': 'form-select'}
+            ),
+
+            'data_ativacao': forms.DateInput(
+                attrs={
+                    'class': 'form-control',
+                    'type': 'date'
+                }
+            ),
+
+            'status': forms.Select(
+                attrs={
+                    'class': 'form-select'
+                }
+            ),
+
             'cto': forms.Select(
                 attrs={'class': 'form-select'}
             ),
@@ -130,7 +168,14 @@ class ClienteForm(forms.ModelForm):
 
         super().__init__(*args, **kwargs)
 
+        # Campo somente leitura
+        self.fields['valor_mensalidade'].widget.attrs['readonly'] = True
+
         self.fields['cto'].queryset = CTO.objects.all()
+
+        self.fields['plano'].queryset = PlanoInternet.objects.filter(
+            ativo=True
+        ).order_by('valor')
 
         self.fields['porta'].choices = [
             ('', 'Selecione uma porta')
@@ -204,3 +249,15 @@ class ClienteForm(forms.ModelForm):
                 self.initial['porta'] = (
                     self.instance.porta
                 )
+
+    def clean_valor_mensalidade(self):
+
+        valor = self.cleaned_data.get("valor_mensalidade")
+
+        plano = self.cleaned_data.get("plano")
+
+        if plano:
+
+            return plano.valor
+
+        return valor

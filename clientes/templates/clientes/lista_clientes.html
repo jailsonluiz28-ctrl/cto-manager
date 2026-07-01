@@ -1,0 +1,326 @@
+<h1 style="color:red">TESTE LISTA CLIENTES NOVA</h1>
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1">
+
+    <title>Clientes</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+          rel="stylesheet">
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+          rel="stylesheet">
+
+</head>
+
+<body class="bg-light">
+
+<div class="container-fluid mt-4">
+
+    <div class="card shadow">
+
+        <div class="card-header bg-primary text-white">
+
+            <div class="d-flex justify-content-between align-items-center">
+
+                <h3>
+
+                    <i class="fa-solid fa-users"></i>
+
+                    Cadastro de Clientes
+
+                </h3>
+
+                <a href="/clientes/novo/"
+                   class="btn btn-light">
+
+                    <i class="fa-solid fa-plus"></i>
+
+                    Novo Cliente
+
+                </a>
+
+            </div>
+
+        </div>
+
+        <div class="card-body">
+
+            <form method="GET">
+
+                <div class="row">
+
+                    <div class="col-md-10">
+
+                        <input
+                            type="text"
+                            class="form-control"
+                            name="busca"
+                            value="{{ busca }}"
+                            placeholder="Pesquisar por Nome, CTO ou Rua">
+
+                    </div>
+
+                    <div class="col-md-2">
+
+                        <button
+                            class="btn btn-primary w-100">
+
+                            <i class="fa fa-search"></i>
+
+                            Buscar
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </form>
+
+            <hr>
+
+            <div class="row text-center mb-4">
+
+                <div class="col-md-4">
+
+                    <div class="card border-primary">
+
+                        <div class="card-body">
+
+                            <h5>Total de Clientes</h5>
+
+                            <h2>{{ clientes|length }}</h2>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="col-md-4">
+
+                    <div class="card border-success">
+
+                        <div class="card-body">
+
+                            <h5>Clientes com Plano</h5>
+
+                            <h2>
+
+                                {% for cliente in clientes %}
+
+                                {% if cliente.plano %}
+
+                                {% endif %}
+
+                                {% endfor %}
+
+                                {{ clientes|length }}
+
+                            </h2>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="col-md-4">
+
+                    <div class="card border-warning">
+
+                        <div class="card-body">
+
+                            <h5>Clientes Cadastrados</h5>
+
+                            <h2>{{ clientes|length }}</h2>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="table-responsive">
+
+            <table class="table table-bordered table-hover table-striped align-middle">
+
+            <thead class="table-dark">
+
+            <tr>
+
+            <th>Cliente</th>
+
+            <th>Plano</th>
+
+            <th>Valor</th>
+
+            <th>Venc.</th>
+
+            <th>CTO</th>
+
+            <th>Porta</th>
+
+            <th>Telefone</th>
+
+            <th width="180">Ações</th>
+
+            </tr>
+
+            </thead>
+
+            <tbody>
+
+            {% for cliente in clientes %}
+
+            <tr>
+
+            <td>
+
+            <strong>{{ cliente.nome }}</strong>
+
+            </td>
+
+            <td>
+
+            {{ cliente.plano }}
+
+            </td>
+
+            <td>
+
+            R$ {{ cliente.valor_mensalidade }}
+
+            </td>
+
+            <td>
+
+            {{ cliente.dia_vencimento }}
+
+            </td>
+
+            <td>
+
+            {{ cliente.cto.nome }}
+
+            </td>
+
+            <td>
+
+            {{ cliente.porta }}
+
+            </td>
+
+            <td>
+
+            {{ cliente.telefone }}
+
+            </td>
+
+            <td>
+
+            <a href="/clientes/{{ cliente.id }}/"
+            class="btn btn-info btn-sm">
+
+            <i class="fa fa-eye"></i>
+
+            </a>
+
+            <a href="/clientes/{{ cliente.id }}/editar/"
+            class="btn btn-warning btn-sm">
+
+            <i class="fa fa-edit"></i>
+
+            </a>
+
+            <a href="/clientes/{{ cliente.id }}/excluir/"
+            class="btn btn-danger btn-sm">
+
+            <i class="fa fa-trash"></i>
+
+            </a>
+
+            </td>
+
+            </tr>
+
+            {% endfor %}
+
+            {% if not clientes %}
+
+            <tr>
+
+            <td colspan="8"
+            class="text-center">
+
+            Nenhum cliente encontrado.
+
+            </td>
+
+            </tr>
+
+            {% endif %}
+
+            </tbody>
+
+            </table>
+
+            </div>
+
+            <hr>
+
+            <div class="d-flex justify-content-between">
+
+            <a href="/"
+            class="btn btn-secondary">
+
+            <i class="fa fa-arrow-left"></i>
+
+            Voltar
+
+            </a>
+
+            <div>
+
+            <a href="/clientes/exportar/pdf/"
+            class="btn btn-danger">
+
+            <i class="fa fa-file-pdf"></i>
+
+            PDF
+
+            </a>
+
+            <a href="/clientes/exportar/excel/"
+            class="btn btn-success">
+
+            <i class="fa fa-file-excel"></i>
+
+            Excel
+
+            </a>
+
+            </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+
+</html>

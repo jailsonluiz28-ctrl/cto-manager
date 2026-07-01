@@ -1,0 +1,45 @@
+<div class="content">
+
+    <div class="topbar">
+
+        <div>
+
+            <h5 class="mb-0">
+
+                Olá, {{ request.user.username }}
+
+            </h5>
+
+            <small class="text-muted">
+
+                Bem-vindo ao CTO Manager
+
+            </small>
+
+        </div>
+
+        <div>
+
+            {% if user.is_superuser %}
+
+                <span class="badge bg-danger">
+
+                    Administrador
+
+                </span>
+
+            {% else %}
+
+                <span class="badge bg-success">
+
+                    Operador
+
+                </span>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+    <div class="page">

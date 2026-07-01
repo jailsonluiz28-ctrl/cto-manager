@@ -1,0 +1,59 @@
+{% extends 'base/base.html' %}
+
+{% block title %}
+Excluir Cliente
+{% endblock %}
+
+{% block content %}
+
+<div class="card border-danger">
+
+    <div class="card-header bg-danger text-white">
+
+        <h3>
+
+            🗑 Excluir Cliente
+
+        </h3>
+
+    </div>
+
+    <div class="card-body">
+
+        <h4>
+
+            Deseja realmente excluir:
+
+        </h4>
+
+        <h2>
+
+            {{ cliente.nome }}
+
+        </h2>
+
+        <br>
+
+        <form method="POST">
+
+            {% csrf_token %}
+
+            <button class="btn btn-danger">
+
+                Sim, Excluir
+
+            </button>
+
+            <a href="/clientes/" class="btn btn-secondary">
+
+                Cancelar
+
+            </a>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endblock %}

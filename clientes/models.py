@@ -3,6 +3,7 @@ from django.core.exceptions import ValidationError
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from ctos.models import CTO
+from planos.models import PlanoInternet
 
 
 class Cliente(models.Model):
@@ -24,9 +25,19 @@ class Cliente(models.Model):
         ('ONU+ROTEADOR', 'ONU + Roteador'),
     ]
 
-    nome = models.CharField(
-        max_length=100
-    )
+    DIA_VENCIMENTO = [
+        (5, "05"),
+        (10, "10"),
+        (15, "15"),
+        (20, "20"),
+    ]
+
+    STATUS_CLIENTE = [
+        ("ATIVO", "Ativo em Dia"),
+        ("SUSPENSO", "Suspenso por Falta de Pagamento"),
+    ]
+
+    nome = models.CharField(max_length=100)
 
     tipo_pessoa = models.CharField(
         max_length=10,
@@ -109,6 +120,42 @@ class Cliente(models.Model):
         null=True
     )
 
+    plano = models.ForeignKey(
+        PlanoInternet,
+        on_delete=models.PROTECT,
+        verbose_name="Plano",
+        blank=True,
+        null=True
+    )
+
+    valor_mensalidade = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name="Valor da Mensalidade",
+        blank=True,
+        null=True
+    )
+
+    data_ativacao = models.DateField(
+        verbose_name="Data da Ativação",
+        null=True,
+        blank=True
+    )
+
+    status = models.CharField(
+        max_length=15,
+        choices=STATUS_CLIENTE,
+        default="ATIVO",
+        verbose_name="Situação"
+    )
+
+    dia_vencimento = models.IntegerField(
+        choices=DIA_VENCIMENTO,
+        blank=True,
+        null=True,
+        verbose_name="Dia do Vencimento"
+    )
+
     equipamento_propriedade = models.CharField(
         max_length=20,
         choices=PROPRIEDADE_EQUIPAMENTO,
@@ -138,13 +185,11 @@ class Cliente(models.Model):
     def clean(self):
 
         if self.porta > self.cto.portas_total:
-
             raise ValidationError(
                 f"Esta CTO possui apenas {self.cto.portas_total} portas."
             )
 
         if self.porta < 1:
-
             raise ValidationError(
                 "O número da porta deve ser maior que zero."
             )
@@ -155,19 +200,15 @@ class Cliente(models.Model):
         ).exclude(pk=self.pk)
 
         if cliente_existente.exists():
-
             raise ValidationError(
                 f"A porta {self.porta} já está ocupada."
             )
 
     def save(self, *args, **kwargs):
-
         self.full_clean()
-
         super().save(*args, **kwargs)
 
     def __str__(self):
-
         return self.nome
 
 
@@ -185,16 +226,12 @@ def atualizar_ocupacao_cto(sender, instance, **kwargs):
 
         cto.portas_ocupadas = quantidade
 
-        cto.save(
-            update_fields=['portas_ocupadas']
-        )
+        cto.save(update_fields=['portas_ocupadas'])
 
 
 class HistoricoMovimentacao(models.Model):
 
-    data = models.DateTimeField(
-        auto_now_add=True
-    )
+    data = models.DateTimeField(auto_now_add=True)
 
     usuario = models.CharField(
         max_length=100,
@@ -202,19 +239,13 @@ class HistoricoMovimentacao(models.Model):
         null=True
     )
 
-    cliente_nome = models.CharField(
-        max_length=100
-    )
+    cliente_nome = models.CharField(max_length=100)
 
-    cto_nome = models.CharField(
-        max_length=100
-    )
+    cto_nome = models.CharField(max_length=100)
 
     porta = models.IntegerField()
 
-    acao = models.CharField(
-        max_length=50
-    )
+    acao = models.CharField(max_length=50)
 
     observacao = models.TextField(
         blank=True,
@@ -225,6 +256,10 @@ class HistoricoMovimentacao(models.Model):
 
         ordering = ['-data']
 
+        verbose_name = "Histórico"
+
+        verbose_name_plural = "Histórico de Movimentações"
+
     def __str__(self):
 
-        return f"{self.acao} - {self.cliente_nome}"
+        return f"{self.data.strftime('%d/%m/%Y %H:%M')} - {self.acao}"

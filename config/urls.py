@@ -4,7 +4,8 @@ from django.contrib.auth import views as auth_views
 
 from dashboard.views import (
     home,
-    lista_ctos_lotadas
+    lista_ctos_lotadas,
+    sair,
 )
 
 urlpatterns = [
@@ -19,7 +20,7 @@ urlpatterns = [
 
     path(
         'logout/',
-        auth_views.LogoutView.as_view(),
+        sair,
         name='logout'
     ),
 
@@ -48,6 +49,16 @@ urlpatterns = [
     path(
         'ctos/',
         include('ctos.urls')
+    ),
+
+    path(
+        'financeiro/',
+        include('financeiro.urls')
+    ),
+
+    path(
+        'planos/',
+        include('planos.urls')
     ),
 
     path(

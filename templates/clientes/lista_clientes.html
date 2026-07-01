@@ -1,40 +1,38 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clientes</title>
+{% extends 'base/base.html' %}
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
+{% block title %}
+Clientes
+{% endblock %}
 
-<body style="background-color:#f5f6fa;">
+{% block content %}
 
-<div class="container mt-4">
+<div class="d-flex justify-content-between align-items-center mb-4">
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        👥 Clientes
+    </h2>
 
-        <h2>👥 Clientes</h2>
+    <div>
 
-        <div>
+        <a href="/clientes/novo/" class="btn btn-success">
+            ➕ Novo Cliente
+        </a>
 
-            <a href="/clientes/novo/" class="btn btn-success">
-                ➕ Novo Cliente
-            </a>
+        <a href="/clientes/exportar/pdf/" class="btn btn-danger">
+            📄 PDF
+        </a>
 
-            <a href="/clientes/exportar/pdf/" class="btn btn-danger">
-                📄 PDF
-            </a>
-
-            <a href="/" class="btn btn-primary">
-                🏠 Dashboard
-            </a>
-
-        </div>
+        <a href="/clientes/exportar/excel/" class="btn btn-success">
+            📊 Excel
+        </a>
 
     </div>
 
-    <div class="card shadow p-4 mb-4">
+</div>
+
+<div class="card">
+
+    <div class="card-body">
 
         <form method="GET">
 
@@ -44,18 +42,19 @@
 
                     <input
                         type="text"
-                        name="busca"
                         class="form-control"
-                        placeholder="Pesquisar cliente, CTO ou rua..."
-                        value="{{ busca }}"
-                    >
+                        name="busca"
+                        placeholder="Pesquisar cliente..."
+                        value="{{ busca }}">
 
                 </div>
 
                 <div class="col-md-2">
 
                     <button class="btn btn-primary w-100">
-                        🔎 Buscar
+
+                        Buscar
+
                     </button>
 
                 </div>
@@ -66,78 +65,135 @@
 
     </div>
 
-    <div class="card shadow">
+</div>
 
-        <div class="card-body">
+<br>
 
-            <div class="table-responsive">
+<div class="card">
 
-                <table class="table table-striped table-hover">
+<div class="card-body">
 
-                    <thead class="table-dark">
+<div class="table-responsive">
 
-                        <tr>
-                            <th>Cliente</th>
-                            <th>CTO</th>
-                            <th>Porta</th>
-                            <th>Rua</th>
-                        </tr>
+<table class="table table-hover">
 
-                    </thead>
+<thead class="table-dark">
 
-                    <tbody>
+<tr>
 
-                        {% for cliente in clientes %}
+<th>Cliente</th>
 
-                        <tr>
+<th>Plano</th>
 
-                            <td>
-                                <a href="/clientes/{{ cliente.id }}/">
-                                    {{ cliente.nome }}
-                                </a>
-                            </td>
+<th>Valor</th>
 
-                            <td>{{ cliente.cto.nome }}</td>
+<th>Vencimento</th>
 
-                            <td>{{ cliente.porta }}</td>
+<th>CTO</th>
 
-                            <td>{{ cliente.cto.rua }}</td>
+<th>Porta</th>
 
-                        </tr>
+<th>Ações</th>
 
-                        {% empty %}
+</tr>
 
-                        <tr>
+</thead>
 
-                            <td colspan="4" class="text-center">
+<tbody>
 
-                                Nenhum cliente encontrado.
+{% for cliente in clientes %}
 
-                            </td>
+<tr>
 
-                        </tr>
+<td>
 
-                        {% endfor %}
+{{ cliente.nome }}
 
-                    </tbody>
+</td>
 
-                </table>
+<td>
 
-            </div>
+{{ cliente.plano|default:"Sem Plano" }}
 
-        </div>
+</td>
 
-    </div>
+<td>
 
-    <div class="mt-3">
+R$ {{ cliente.valor_mensalidade|default:"0,00" }}
 
-        <a href="/" class="btn btn-secondary">
-            ← Voltar ao Dashboard
-        </a>
+</td>
 
-    </div>
+<td>
+
+{% if cliente.dia_vencimento %}
+Dia {{ cliente.dia_vencimento }}
+{% else %}
+-
+{% endif %}
+
+</td>
+
+<td>
+
+{{ cliente.cto.nome }}
+
+</td>
+
+<td>
+
+{{ cliente.porta }}
+
+</td>
+
+<td>
+
+<a href="/clientes/{{ cliente.id }}/"
+class="btn btn-info btn-sm">
+
+👁
+
+</a>
+
+<a href="/clientes/{{ cliente.id }}/editar/"
+class="btn btn-warning btn-sm">
+
+✏
+
+</a>
+
+<a href="/clientes/{{ cliente.id }}/excluir/"
+class="btn btn-danger btn-sm">
+
+🗑
+
+</a>
+
+</td>
+
+</tr>
+
+{% empty %}
+
+<tr>
+
+<td colspan="7" class="text-center">
+
+Nenhum cliente cadastrado.
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
 
 </div>
 
-</body>
-</html>
+</div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends 'base/base.html' %}
+
+{% block title %}
+Plano
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+
+<div class="card-header bg-primary text-white">
+
+<h3>
+
+🌐 {{ plano.nome }}
+
+</h3>
+
+</div>
+
+<div class="card-body">
+
+<p>
+
+<strong>Velocidade:</strong>
+
+{{ plano.velocidade }}
+
+</p>
+
+<p>
+
+<strong>Valor:</strong>
+
+R$ {{ plano.valor }}
+
+</p>
+
+<p>
+
+<strong>Descrição:</strong>
+
+{{ plano.descricao|default:"Sem descrição." }}
+
+</p>
+
+<p>
+
+<strong>Status:</strong>
+
+{% if plano.ativo %}
+
+<span class="badge bg-success">
+
+Ativo
+
+</span>
+
+{% else %}
+
+<span class="badge bg-danger">
+
+Inativo
+
+</span>
+
+{% endif %}
+
+</p>
+
+<hr>
+
+<a
+href="/planos/{{ plano.id }}/editar/"
+class="btn btn-warning">
+
+✏ Editar
+
+</a>
+
+<a
+href="/planos/"
+class="btn btn-secondary">
+
+← Voltar
+
+</a>
+
+</div>
+
+</div>
+
+{% endblock %}

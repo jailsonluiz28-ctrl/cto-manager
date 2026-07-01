@@ -1,0 +1,226 @@
+{% extends 'base/base.html' %}
+
+{% block title %}
+Financeiro
+{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <h2>💰 Financeiro</h2>
+
+    <div>
+
+        <a href="/financeiro/nova/" class="btn btn-success">
+
+            ➕ Nova Mensalidade
+
+        </a>
+
+        <a href="/financeiro/exportar/pdf/" class="btn btn-danger">
+
+            📄 PDF
+
+        </a>
+
+        <a href="/financeiro/exportar/excel/" class="btn btn-success">
+
+            📊 Excel
+
+        </a>
+
+        <a href="/financeiro/dashboard/" class="btn btn-primary">
+
+            📈 Dashboard
+
+        </a>
+
+    </div>
+
+</div>
+
+<div class="card mb-4">
+
+<div class="card-body">
+
+<form method="GET">
+
+<div class="row">
+
+<div class="col-md-10">
+
+<input
+type="text"
+name="busca"
+class="form-control"
+placeholder="Pesquisar cliente..."
+value="{{ busca }}">
+
+</div>
+
+<div class="col-md-2">
+
+<button class="btn btn-primary w-100">
+
+🔍 Buscar
+
+</button>
+
+</div>
+
+</div>
+
+</form>
+
+</div>
+
+</div>
+
+<div class="card">
+
+<div class="card-body">
+
+<div class="table-responsive">
+
+<table class="table table-hover">
+
+<thead class="table-dark">
+
+<tr>
+
+<th>Cliente</th>
+
+<th>Competência</th>
+
+<th>Vencimento</th>
+
+<th>Valor</th>
+
+<th>Status</th>
+
+<th width="120">Ações</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+{% for mensalidade in mensalidades %}
+
+<tr>
+
+<td>
+
+{{ mensalidade.cliente.nome }}
+
+</td>
+
+<td>
+
+{{ mensalidade.competencia|date:"m/Y" }}
+
+</td>
+
+<td>
+
+{{ mensalidade.vencimento|date:"d/m/Y" }}
+
+</td>
+
+<td>
+
+R$ {{ mensalidade.valor }}
+
+</td>
+
+<td>
+
+{% if mensalidade.status == "PAGO" %}
+
+<span class="badge bg-success">
+
+Pago
+
+</span>
+
+{% elif mensalidade.status == "ATRASADO" %}
+
+<span class="badge bg-danger">
+
+Atrasado
+
+</span>
+
+{% elif mensalidade.status == "ABERTO" %}
+
+<span class="badge bg-warning">
+
+Em Aberto
+
+</span>
+
+{% else %}
+
+<span class="badge bg-secondary">
+
+Cancelado
+
+</span>
+
+{% endif %}
+
+</td>
+
+<td>
+
+<a
+href="/financeiro/{{ mensalidade.id }}/"
+class="btn btn-info btn-sm">
+
+👁
+
+</a>
+
+{% if mensalidade.status != "PAGO" %}
+
+<a
+href="/financeiro/{{ mensalidade.id }}/receber/"
+class="btn btn-success btn-sm">
+
+💰
+
+</a>
+
+{% endif %}
+
+</td>
+
+</tr>
+
+{% empty %}
+
+<tr>
+
+<td colspan="6" class="text-center">
+
+Nenhuma mensalidade cadastrada.
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+</div>
+
+{% endblock %}
