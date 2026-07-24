@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block titulo %}Finalizar Chamado #{{ chamado.id }}{% endblock %}
+{% block conteudo %}
+<div class="card p-4" style="max-width:600px;">
+  <h6>{{ chamado.cliente.nome }}</h6>
+  <p class="text-muted small">{{ chamado.get_tipo_display }} · {{ chamado.cliente.endereco_completo }}</p>
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label class="form-label small">O que foi feito? <span class="text-danger">*</span></label>
+      <textarea name="observacao_fechamento" class="form-control" rows="4" required placeholder="Descreva o atendimento realizado..."></textarea>
+      <div class="form-text">Obrigatório para concluir o chamado.</div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label small">Fotos (opcional)</label>
+      <input type="file" name="fotos" class="form-control" accept="image/*" multiple>
+    </div>
+    <div class="d-flex gap-2 justify-content-end">
+      <a href="{% url 'meus_chamados' %}" class="btn btn-outline-secondary">Cancelar</a>
+      <button type="submit" class="btn btn-success"><i class="bi bi-check2-circle"></i> Concluir chamado</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

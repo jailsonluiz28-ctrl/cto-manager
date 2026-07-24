@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block titulo %}Chamados Finalizados{% endblock %}
+{% block conteudo %}
+<div class="d-flex justify-content-end mb-3">
+  <a href="{% url 'chamado_list' %}" class="btn btn-outline-secondary">← Voltar para chamados ativos</a>
+</div>
+
+<div class="card">
+  <table class="table mb-0 align-middle">
+    <thead class="table-light">
+      <tr><th>#</th><th>Cliente</th><th>Tipo</th><th>Técnico</th><th>Finalizado por</th><th>Pego às</th><th>Concluído às</th><th>Duração</th><th>Observação</th></tr>
+    </thead>
+    <tbody>
+      {% for c in chamados %}
+      <tr>
+        <td class="text-muted">{{ forloop.counter }}</td>
+        <td>{{ c.cliente.nome }} {% if c.eh_retorno %}<span class="badge bg-danger ms-1">Retorno</span>{% endif %}</td>
+        <td>{{ c.get_tipo_display }}</td>
+        <td>{% if c.tecnico %}{{ c.tecnico.get_full_name|default:c.tecnico.username }}{% else %}—{% endif %}</td>
+        <td>
+          {% if c.finalizado_por %}
+            <span class="fw-medium">{{ c.finalizado_por.get_full_name|default:c.finalizado_por.username }}</span>
+            {% if c.tecnico and c.tecnico != c.finalizado_por %}
+              <div class="text-muted" style="font-size:11px;">chamado do técnico {{ c.tecnico.get_full_name|default:c.tecnico.username }}</div>
+            {% endif %}
+          {% else %}—{% endif %}
+        </td>
+        <td class="text-muted small">{{ c.pego_em|date:"d/m H:i"|default:"—" }}</td>
+        <td class="text-muted small">{{ c.concluido_em|date:"d/m H:i"|default:"—" }}</td>
+        <td><span class="badge bg-success-subtle text-success">{{ c.duracao_formatada }}</span></td>
+        <td class="text-muted small" style="max-width:220px;">{{ c.observacao_fechamento|default:"—" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9" class="text-center text-muted py-4">Nenhum chamado finalizado ainda.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

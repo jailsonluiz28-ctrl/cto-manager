@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block titulo %}{% if object %}Editar Usuário{% else %}Novo Usuário{% endif %}{% endblock %}
+{% block conteudo %}
+<div class="card p-4" style="max-width:600px;">
+  <form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+    <div class="mb-3">
+      <label class="form-label small">{{ field.label }}</label>
+      {{ field }}
+      {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+      {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+    </div>
+    {% endfor %}
+    <div class="alert alert-info small">
+      <strong>Perfil</strong> é o que define o que essa pessoa pode fazer no sistema:
+      Administrador (acesso total), Operador (clientes, CTOs e chamados, sem relatórios)
+      ou Técnico (só chamados e busca de CTO).
+    </div>
+    <div class="d-flex gap-2 justify-content-end">
+      <a href="{% url 'usuario_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+      <button class="btn btn-primary" type="submit">Salvar usuário</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

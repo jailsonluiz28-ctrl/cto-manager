@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block titulo %}Financeiro{% endblock %}
+{% block conteudo %}
+<div class="row g-3 mb-4">
+  <div class="col-md-3 col-6"><div class="kpi-card" style="background:#2563eb;"><div class="rotulo">A receber (mês)</div><div class="valor">R$ {{ a_receber|floatformat:2 }}</div></div></div>
+  <div class="col-md-3 col-6"><div class="kpi-card" style="background:#d97706;"><div class="rotulo">A pagar (mês)</div><div class="valor">R$ {{ total_pagar|floatformat:2 }}</div></div></div>
+  <div class="col-md-3 col-6"><div class="kpi-card" style="background:#dc2626;"><div class="rotulo">Inadimplência</div><div class="valor">R$ {{ total_inadimplencia|floatformat:2 }}</div></div></div>
+  <div class="col-md-3 col-6"><div class="kpi-card" style="background:#059669;"><div class="rotulo">Inadimplentes</div><div class="valor">{{ inadimplentes|length }}</div></div></div>
+</div>
+
+<ul class="nav nav-pills mb-3">
+  <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#receber">A receber</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#pagar">Contas a pagar</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#inadimplencia">Inadimplência</a></li>
+</ul>
+
+<div class="tab-content">
+  <div class="tab-pane fade show active" id="receber">
+    <div class="card">
+      <table class="table mb-0"><thead class="table-light"><tr><th>Cliente</th><th>Plano</th><th class="text-end">Valor</th></tr></thead>
+        <tbody>{% for c in clientes %}<tr><td>{{ c.nome }}</td><td>{{ c.plano }}</td><td class="text-end">R$ {{ c.valor_mensal|floatformat:2 }}</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </div>
+  <div class="tab-pane fade" id="pagar">
+    <div class="mb-2"><a href="{% url 'conta_pagar_create' %}" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> Nova conta</a></div>
+    <div class="card">
+      <table class="table mb-0"><thead class="table-light"><tr><th>Descrição</th><th>Vencimento</th><th>Status</th><th class="text-end">Valor</th></tr></thead>
+        <tbody>{% for c in contas_pagar %}<tr><td>{{ c.descricao }}</td><td>{{ c.vencimento|date:"d/m/Y" }}</td>
+          <td>{% if c.status == "pago" %}<span class="badge bg-success">Pago</span>{% elif c.status == "agendado" %}<span class="badge bg-info text-dark">Agendado</span>{% else %}<span class="badge bg-warning text-dark">Pendente</span>{% endif %}</td>
+          <td class="text-end">R$ {{ c.valor|floatformat:2 }}</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </div>
+  <div class="tab-pane fade" id="inadimplencia">
+    <div class="card">
+      <table class="table mb-0"><thead class="table-light"><tr><th>Cliente</th><th>Telefone</th><th class="text-end">Valor em atraso</th></tr></thead>
+        <tbody>{% for c in inadimplentes %}<tr><td>{{ c.nome }}</td><td>{{ c.telefone }}</td><td class="text-end text-danger fw-semibold">R$ {{ c.valor_mensal|floatformat:2 }}</td></tr>
+          {% empty %}<tr><td colspan="3" class="text-center text-muted py-4">Nenhum cliente inadimplente.</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

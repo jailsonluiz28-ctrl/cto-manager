@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Entrar - CTO Manager Pro{% endblock %}
+{% block conteudo_publico %}
+<div class="d-flex justify-content-center align-items-center" style="min-height:100vh;">
+  <div class="card shadow-sm p-4" style="width: 380px;">
+    <div class="text-center mb-3">
+      <div class="logo-icone mx-auto mb-2" style="width:44px;height:44px;font-size:20px;">
+        <i class="bi bi-broadcast-pin"></i>
+      </div>
+      <h5 class="mb-0">CTO MANAGER PRO</h5>
+      <div class="text-muted small">Painel Operacional da Rede</div>
+    </div>
+    {% if form.errors %}
+      <div class="alert alert-danger py-2 small">Usuário ou senha inválidos.</div>
+    {% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label class="form-label small">Usuário</label>
+        <input type="text" name="username" class="form-control" required autofocus>
+      </div>
+      <div class="mb-3">
+        <label class="form-label small">Senha</label>
+        <input type="password" name="password" class="form-control" required>
+      </div>
+      <button class="btn btn-primary w-100" type="submit">Entrar</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

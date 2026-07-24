@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block titulo %}Planos{% endblock %}
+{% block conteudo %}
+<div class="d-flex justify-content-end mb-3">
+  <a href="{% url 'plano_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Novo plano</a>
+</div>
+<div class="row g-3">
+  {% for p in planos %}
+  <div class="col-md-4">
+    <div class="card p-3">
+      <div class="d-flex align-items-center gap-2 mb-2"><i class="bi bi-wifi text-primary fs-5"></i><h6 class="mb-0">{{ p.nome }}</h6></div>
+      <div class="fs-4 fw-bold">R$ {{ p.valor_mensal|floatformat:2 }}<span class="fs-6 fw-normal text-muted">/mês</span></div>
+      <div class="text-muted small">{{ p.clientes.count }} clientes ativos neste plano</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block titulo %}Novo chamado{% endblock %}
+{% block conteudo %}
+<div class="card p-4" style="max-width:600px;">
+  <form method="post">
+    {% csrf_token %}
+
+    <div class="mb-3 position-relative">
+      <label class="form-label small">Cliente</label>
+      <input type="text" id="cliente_busca" class="form-control" autocomplete="off"
+             placeholder="Digite o nome, login, rua, telefone ou CPF..."
+             value="{% if cliente_pre_selecionado %}{{ cliente_pre_selecionado.nome }}{% endif %}">
+      <input type="hidden" name="cliente" id="id_cliente" required
+             value="{% if cliente_pre_selecionado %}{{ cliente_pre_selecionado.pk }}{% endif %}">
+      <div id="cliente_sugestoes" class="list-group position-absolute w-100" style="z-index:1000; top:100%;"></div>
+      {% if form.cliente.errors %}<div class="text-danger small">{{ form.cliente.errors }}</div>{% endif %}
+    </div>
+
+    {% for field in form %}
+      {% if field.name != "cliente" %}
+      <div class="mb-3">
+        <label class="form-label small">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+      </div>
+      {% endif %}
+    {% endfor %}
+
+    <div class="d-flex gap-2 justify-content-end">
+      <a href="{% url 'chamado_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+      <button class="btn btn-primary" type="submit">Abrir chamado</button>
+    </div>
+  </form>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const busca = document.getElementById("cliente_busca");
+  const idInput = document.getElementById("id_cliente");
+  const sugestoesBox = document.getElementById("cliente_sugestoes");
+  let timeoutId = null;
+
+  busca.addEventListener("input", function () {
+    idInput.value = "";
+    const termo = busca.value.trim();
+    clearTimeout(timeoutId);
+    if (termo.length < 2) { sugestoesBox.innerHTML = ""; return; }
+
+    timeoutId = setTimeout(function () {
+      fetch("{% url 'cliente_busca_json' %}?q=" + encodeURIComponent(termo))
+        .then((r) => r.json())
+        .then((data) => {
+          sugestoesBox.innerHTML = "";
+          data.resultados.forEach((c) => {
+            const item = document.createElement("button");
+            item.type = "button";
+            item.className = "list-group-item list-group-item-action";
+            item.innerHTML = "<strong>" + c.nome + "</strong><br><span class='text-muted small'>" + c.detalhe + "</span>";
+            item.addEventListener("click", function () {
+              busca.value = c.nome;
+              idInput.value = c.id;
+              sugestoesBox.innerHTML = "";
+            });
+            sugestoesBox.appendChild(item);
+          });
+        });
+    }, 250);
+  });
+
+  document.addEventListener("click", function (e) {
+    if (!sugestoesBox.contains(e.target) && e.target !== busca) sugestoesBox.innerHTML = "";
+  });
+});
+</script>
+{% endblock %}

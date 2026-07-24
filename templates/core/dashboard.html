@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block titulo %}Painel Operacional da Rede{% endblock %}
+{% block conteudo %}
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3"><div class="kpi-card" style="background:#2563eb;"><div class="rotulo">Total de CTOs</div><div class="valor">{{ total_ctos }}</div></div></div>
+  <div class="col-6 col-md-3"><div class="kpi-card" style="background:#059669;"><div class="rotulo">Total de Clientes</div><div class="valor">{{ total_clientes }}</div></div></div>
+  <div class="col-6 col-md-3"><div class="kpi-card" style="background:#d97706;"><div class="rotulo">CTOs Ocupadas</div><div class="valor">{{ ctos_ocupadas }}</div></div></div>
+  <div class="col-6 col-md-3"><div class="kpi-card" style="background:#dc2626;"><div class="rotulo">Portas Livres</div><div class="valor">{{ portas_livres }}</div></div></div>
+  <div class="col-6 col-md-3"><div class="kpi-card" style="background:#10b981;"><div class="rotulo">Rede Livre</div><div class="valor">{{ rede_livre_pct }}%</div></div></div>
+  <div class="col-6 col-md-3"><div class="kpi-card" style="background:#ef4444;"><div class="rotulo">Rede Ocupada</div><div class="valor">{{ rede_ocupada_pct }}%</div></div></div>
+  <div class="col-6 col-md-3"><div class="kpi-card" style="background:#7c3aed;"><div class="rotulo">CTOs Lotadas</div><div class="valor">{{ ctos_lotadas|length }}</div></div></div>
+  <div class="col-6 col-md-3"><div class="kpi-card" style="background:#0891b2;"><div class="rotulo">Capacidade Total</div><div class="valor">{{ total_portas }}</div></div></div>
+</div>
+
+<h5 class="mb-1"><i class="bi bi-rocket-takeoff text-primary"></i> Acesso Rápido</h5>
+<p class="text-muted small">Funções mais utilizadas</p>
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3 col-lg-2"><a href="{% url 'cliente_list' %}" class="text-decoration-none"><div class="quick-card border bg-white"><i class="bi bi-people fs-3 text-primary"></i><div class="fw-semibold small mt-2">Clientes</div><div class="text-muted" style="font-size:11px;">Gerenciar clientes</div></div></a></div>
+  <div class="col-6 col-md-3 col-lg-2"><a href="{% url 'cto_list' %}" class="text-decoration-none"><div class="quick-card border bg-white"><i class="bi bi-diagram-3 fs-3 text-info"></i><div class="fw-semibold small mt-2">CTOs</div><div class="text-muted" style="font-size:11px;">Gerenciar rede</div></div></a></div>
+  <div class="col-6 col-md-3 col-lg-2"><a href="{% url 'plano_list' %}" class="text-decoration-none"><div class="quick-card border bg-white"><i class="bi bi-wifi fs-3 text-indigo" style="color:#4f46e5;"></i><div class="fw-semibold small mt-2">Planos</div><div class="text-muted" style="font-size:11px;">Gerenciar planos</div></div></a></div>
+  <div class="col-6 col-md-3 col-lg-2"><a href="{% url 'financeiro' %}" class="text-decoration-none"><div class="quick-card border bg-white"><i class="bi bi-cash-coin fs-3 text-success"></i><div class="fw-semibold small mt-2">Mensalidades</div><div class="text-muted" style="font-size:11px;">Contas a receber</div></div></a></div>
+  <div class="col-6 col-md-3 col-lg-2"><a href="{% url 'financeiro' %}" class="text-decoration-none"><div class="quick-card border bg-white"><i class="bi bi-exclamation-triangle fs-3 text-danger"></i><div class="fw-semibold small mt-2">Inadimplentes</div><div class="text-muted" style="font-size:11px;">Clientes atrasados</div></div></a></div>
+  <div class="col-6 col-md-3 col-lg-2"><a href="{% url 'chamado_list' %}" class="text-decoration-none"><div class="quick-card border bg-white"><i class="bi bi-tools fs-3" style="color:#7c3aed;"></i><div class="fw-semibold small mt-2">Chamados</div><div class="text-muted" style="font-size:11px;">Suporte técnico</div></div></a></div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card p-3 h-100">
+      <h6><i class="bi bi-exclamation-triangle text-danger"></i> CTOs Lotadas</h6>
+      <p class="text-muted small">100% ocupadas</p>
+      {% if not ctos_lotadas %}
+        <p class="text-muted small text-center py-3">Nenhuma CTO lotada.</p>
+      {% else %}
+        {% for cto in ctos_lotadas %}
+          <div class="d-flex justify-content-between align-items-center bg-danger-subtle rounded px-3 py-2 mb-2">
+            <span class="fw-semibold text-danger">{{ cto.codigo }}</span>
+            <span class="small text-danger">{{ cto.bairro }}</span>
+          </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card p-3 h-100">
+      <h6><i class="bi bi-bar-chart"></i> Resumo da Rede</h6>
+      <p class="text-muted small">Informações gerais</p>
+      <div class="d-flex justify-content-between py-1"><span class="text-muted">Total de Portas</span><strong>{{ total_portas }}</strong></div>
+      <div class="d-flex justify-content-between py-1"><span class="text-muted">Portas Ocupadas</span><strong>{{ portas_ocupadas }}</strong></div>
+      <div class="d-flex justify-content-between py-1"><span class="text-muted">Portas Livres</span><strong>{{ portas_livres }}</strong></div>
+      <div class="d-flex justify-content-between py-1"><span class="text-muted">Disponibilidade</span><strong class="text-primary">{{ rede_livre_pct }}%</strong></div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card p-3 h-100">
+      <h6><i class="bi bi-clipboard-data"></i> Últimas Movimentações</h6>
+      <p class="text-muted small">Chamados em aberto: <strong>{{ chamados_abertos }}</strong></p>
+      <p class="text-muted small">Clientes inadimplentes: <strong class="text-danger">{{ inadimplentes }}</strong></p>
+      <a href="{% url 'chamado_list' %}" class="small">Ver todos os chamados →</a>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-3">
+  <div class="card-header bg-white"><i class="bi bi-people"></i> Clientes Recentes</div>
+  <table class="table mb-0">
+    <thead class="table-light"><tr><th>Cliente</th><th>Plano</th><th>CTO</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for c in clientes_recentes %}
+      <tr>
+        <td>{{ c.nome }}</td>
+        <td class="text-primary">{{ c.plano }}</td>
+        <td>{{ c.cto }}</td>
+        <td>
+          {% if c.status == "ativo" %}<span class="badge bg-success">Ativo</span>
+          {% elif c.status == "inadimplente" %}<span class="badge bg-danger">Inadimplente</span>
+          {% else %}<span class="badge bg-warning text-dark">{{ c.get_status_display }}</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="card-footer bg-white text-center">
+    <a href="{% url 'cliente_list' %}">Ver todos os clientes</a>
+  </div>
+</div>
+
+{% if logs_recentes %}
+<div class="card mt-3">
+  <div class="card-header bg-white d-flex align-items-center gap-2">
+    <i class="bi bi-clock-history"></i>
+    <span class="fw-semibold">Histórico de Movimentações</span>
+    <span class="badge bg-secondary-subtle text-secondary ms-1">visível só para Administrador</span>
+  </div>
+  <table class="table mb-0">
+    <thead class="table-light"><tr><th>Data/Hora</th><th>Usuário</th><th>Ação</th><th>Detalhes</th></tr></thead>
+    <tbody>
+      {% for log in logs_recentes %}
+      <tr>
+        <td class="text-muted small">{{ log.criado_em|date:"d/m/Y H:i" }}</td>
+        <td>{{ log.usuario|default:"Sistema" }}</td>
+        <td>{{ log.acao }}</td>
+        <td class="text-muted">{{ log.detalhes }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% endblock %}

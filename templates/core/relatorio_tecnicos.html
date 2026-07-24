@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block titulo %}Relatório de Técnicos{% endblock %}
+{% block conteudo %}
+<form class="d-flex gap-2 mb-3" method="get">
+  <select name="mes" class="form-select" style="max-width:160px;" onchange="this.form.submit()">
+    {% for valor, rotulo in meses %}<option value="{{ valor }}" {% if valor == mes_selecionado %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+  </select>
+  <select name="ano" class="form-select" style="max-width:120px;" onchange="this.form.submit()">
+    {% for a in anos %}<option value="{{ a }}" {% if a == ano_selecionado %}selected{% endif %}>{{ a }}</option>{% endfor %}
+  </select>
+</form>
+
+<div class="card">
+  <div class="card-header bg-white">Chamados concluídos em {{ nome_mes }}/{{ ano_selecionado }}</div>
+  <table class="table mb-0">
+    <thead class="table-light">
+      <tr>
+        <th>Técnico</th>
+        <th class="text-center">Concluídos no mês</th>
+        <th class="text-center">Em andamento (agora)</th>
+        <th class="text-center">Cancelados (total)</th>
+        <th class="text-center">Concluídos (histórico total)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in dados %}
+      <tr>
+        <td>{{ d.tecnico.get_full_name|default:d.tecnico.username }}</td>
+        <td class="text-center"><span class="badge bg-success fs-6">{{ d.concluidos_mes }}</span></td>
+        <td class="text-center"><span class="badge bg-warning text-dark">{{ d.em_andamento }}</span></td>
+        <td class="text-center"><span class="badge bg-secondary">{{ d.cancelados }}</span></td>
+        <td class="text-center text-muted">{{ d.concluidos_total }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="text-center text-muted py-4">Nenhum técnico cadastrado ainda.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

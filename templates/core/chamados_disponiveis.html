@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block titulo %}Chamados Disponíveis{% endblock %}
+{% block conteudo %}
+<p class="text-muted small">Chamados cinza/brancos estão livres. Assim que alguém pega, o card fica colorido — e ninguém mais consegue pegar aquele chamado. Você só pode ter um chamado ativo por vez.</p>
+
+{% for c in chamados %}
+<div class="card p-3 mb-2 card-prioridade-{{ c.prioridade }} {% if c.eh_retorno %}border border-3 border-dark{% endif %}">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div>
+      <div class="fw-semibold">
+        <span class="text-muted">{{ forloop.counter }} —</span>
+        {{ c.cliente.nome }}
+        {% if c.prioridade == "extrema" %}<span class="badge bg-danger ms-1">Extrema</span>
+        {% elif c.prioridade == "alta" %}<span class="badge bg-danger ms-1">Alta</span>
+        {% elif c.prioridade == "media" %}<span class="badge bg-dark ms-1">Média</span>
+        {% else %}<span class="badge bg-dark ms-1">Baixa</span>{% endif %}
+        {% if c.eh_retorno %}<span class="badge bg-white text-dark border border-dark ms-1"><i class="bi bi-arrow-repeat"></i> Retorno</span>{% endif %}
+      </div>
+      <div class="text-muted small"><i class="bi bi-geo-alt"></i> {{ c.cliente.endereco_completo }}</div>
+      <div class="text-muted small">login - {{ c.cliente.login_pppoe|default:"—" }}</div>
+      <div class="text-muted small">senha - {{ c.cliente.senha_pppoe|default:"—" }}</div>
+      <div class="text-muted small">telefone - {{ c.cliente.telefone|default:"—" }}</div>
+      <div class="text-muted small">{{ c.get_tipo_display }} · aberto em {{ c.criado_em|date:"d/m H:i" }}</div>
+      <div class="text-muted small">obs: {{ c.descricao|default:"—" }}</div>
+      {% if c.eh_retorno %}
+      <div class="small mt-1 fw-semibold" style="color:#fbbf24;"><i class="bi bi-exclamation-triangle"></i> Atendido anteriormente por: {{ c.tecnico_ultimo_atendimento|default:"não identificado" }}</div>
+      {% endif %}
+    </div>
+    <div>
+      {% if c.tecnico_id is None %}
+        <form method="post" action="{% url 'pegar_chamado' c.pk %}">
+          {% csrf_token %}
+          <button class="btn btn-light btn-sm fw-semibold"><i class="bi bi-hand-index-thumb"></i> Pegar chamado</button>
+        </form>
+      {% elif c.tecnico == request.user %}
+        <span class="badge bg-light text-dark">Você assumiu este chamado</span>
+      {% else %}
+        <span class="badge bg-light text-dark">Assumido por {{ c.tecnico.get_full_name|default:c.tecnico.username }}</span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% empty %}
+<p class="text-muted">Nenhum chamado em aberto no momento.</p>
+{% endfor %}
+{% endblock %}
