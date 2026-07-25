@@ -100,8 +100,12 @@ class ContaPagarForm(BootstrapFormMixin, forms.ModelForm):
 
     class Meta:
         model = ContaPagar
-        fields = ["descricao", "valor", "vencimento", "status", "recorrente", "forma_pagamento"]
-        labels = {"valor": "Valor (de cada parcela, se for parcelado)", "vencimento": "Vencimento (1º vencimento, se parcelado)"}
+        fields = ["descricao", "valor", "vencimento", "status", "recorrente", "forma_pagamento", "nota_fiscal"]
+        labels = {
+            "valor": "Valor (de cada parcela, se for parcelado)",
+            "vencimento": "Vencimento (1º vencimento, se parcelado)",
+            "nota_fiscal": "Nota fiscal / documento (PDF)",
+        }
         widgets = {"vencimento": forms.DateInput(attrs={"type": "date"})}
 
     def __init__(self, *args, **kwargs):

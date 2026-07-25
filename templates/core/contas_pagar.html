@@ -19,6 +19,7 @@
   <ul class="nav nav-pills">
     <li class="nav-item"><a class="nav-link active" href="{% url 'contas_pagar' %}?mes={{ mes }}&ano={{ ano }}">Contas do mês</a></li>
     <li class="nav-item"><a class="nav-link" href="{% url 'debitos_congelados' %}">Débitos Congelados</a></li>
+    <li class="nav-item"><a class="nav-link" href="{% url 'contas_pagas' %}">Contas Pagas</a></li>
   </ul>
   <a href="{% url 'conta_pagar_create' %}?mes={{ mes }}&ano={{ ano }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nova conta</a>
 </div>
@@ -51,6 +52,11 @@
               <input type="hidden" name="mes" value="{{ mes }}"><input type="hidden" name="ano" value="{{ ano }}">
               <button class="btn btn-sm btn-outline-warning" title="Desfazer pagamento (marcado por engano)"><i class="bi bi-arrow-counterclockwise"></i></button>
             </form>
+            {% endif %}
+            {% if c.nota_fiscal %}
+            <a href="{{ c.nota_fiscal.url }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Ver nota fiscal"><i class="bi bi-file-earmark-pdf"></i></a>
+            {% else %}
+            <a href="{% url 'conta_pagar_update' c.pk %}?mes={{ mes }}&ano={{ ano }}" class="btn btn-sm btn-outline-secondary" title="Anexar nota fiscal (PDF)"><i class="bi bi-paperclip"></i></a>
             {% endif %}
             <a href="{% url 'conta_pagar_update' c.pk %}?mes={{ mes }}&ano={{ ano }}" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
             <a href="{% url 'conta_pagar_delete' c.pk %}?mes={{ mes }}&ano={{ ano }}" class="btn btn-sm btn-outline-danger" title="Excluir"><i class="bi bi-trash"></i></a>

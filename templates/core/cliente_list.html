@@ -38,6 +38,7 @@
         </td>
         <td class="text-end">R$ {{ c.valor_mensal|floatformat:2 }}</td>
         <td class="text-end">
+          <a href="{% url 'cliente_historico' c.pk %}" class="btn btn-sm btn-outline-info" title="Histórico completo"><i class="bi bi-clock-history"></i></a>
           <a href="{% url 'chamado_create' %}?cliente={{ c.pk }}" class="btn btn-sm btn-outline-primary" title="Abrir chamado para este cliente"><i class="bi bi-headset"></i></a>
           <a href="{% url 'cliente_update' c.pk %}" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
           {% if c.status != "cancelado" %}

@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block titulo %}Relatórios{% endblock %}
+{% block conteudo %}
+
+<form class="d-flex gap-2 mb-3" method="get" id="form-mes-rel">
+  <select name="mes" class="form-select" style="max-width:160px;" onchange="document.getElementById('form-mes-rel').submit()">
+    {% for valor, rotulo in meses_opcoes %}<option value="{{ valor }}" {% if valor == mes %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+  </select>
+  <select name="ano" class="form-select" style="max-width:120px;" onchange="document.getElementById('form-mes-rel').submit()">
+    {% for a in anos_opcoes %}<option value="{{ a }}" {% if a == ano %}selected{% endif %}>{{ a }}</option>{% endfor %}
+  </select>
+</form>
+
+<ul class="nav nav-pills mb-3">
+  <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#tecnicos">Técnicos</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#operadores">Operadores</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#chamados">Chamados do Mês</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#clientes">Clientes</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#crescimento">Financeiro / Crescimento</a></li>
+</ul>
+
+<div class="tab-content">
+
+  {# ---------------- TÉCNICOS ---------------- #}
+  <div class="tab-pane fade show active" id="tecnicos">
+    <form class="d-flex gap-2 mb-3" method="get">
+      <input type="hidden" name="mes" value="{{ mes }}"><input type="hidden" name="ano" value="{{ ano }}">
+      <select name="tecnico" class="form-select" style="max-width:220px;" onchange="this.form.submit()">
+        <option value="">Todos os técnicos</option>
+        {% for t in tecnicos_todos %}<option value="{{ t.id }}" {% if tecnico_filtro == t.id|stringformat:"s" %}selected{% endif %}>{{ t.get_full_name|default:t.username }}</option>{% endfor %}
+      </select>
+    </form>
+    <div class="card">
+      <table class="table mb-0 align-middle">
+        <thead class="table-light"><tr><th>Técnico</th><th class="text-center">Concluídos no mês</th><th class="text-center">Em andamento (agora)</th><th class="text-center">Cancelados (total)</th><th class="text-center">Concluídos (histórico)</th></tr></thead>
+        <tbody>
+          {% for d in dados_tecnicos %}
+          <tr>
+            <td>{{ d.pessoa.get_full_name|default:d.pessoa.username }}</td>
+            <td class="text-center"><span class="badge bg-success fs-6">{{ d.concluidos_mes }}</span></td>
+            <td class="text-center"><span class="badge bg-warning text-dark">{{ d.em_andamento }}</span></td>
+            <td class="text-center"><span class="badge bg-secondary">{{ d.cancelados }}</span></td>
+            <td class="text-center text-muted">{{ d.concluidos_total }}</td>
+          </tr>
+          {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">Nenhum técnico cadastrado.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ---------------- OPERADORES ---------------- #}
+  <div class="tab-pane fade" id="operadores">
+    <form class="d-flex gap-2 mb-3" method="get">
+      <input type="hidden" name="mes" value="{{ mes }}"><input type="hidden" name="ano" value="{{ ano }}">
+      <select name="operador" class="form-select" style="max-width:220px;" onchange="this.form.submit()">
+        <option value="">Todos os operadores</option>
+        {% for o in operadores_todos %}<option value="{{ o.id }}" {% if operador_filtro == o.id|stringformat:"s" %}selected{% endif %}>{{ o.get_full_name|default:o.username }}</option>{% endfor %}
+      </select>
+    </form>
+    <p class="text-muted small">Quantidade de chamados que cada operador (ou administrador) abriu em {{ mes_ref|date:"F/Y" }}.</p>
+    <div class="card">
+      <table class="table mb-0 align-middle">
+        <thead class="table-light"><tr><th>Operador</th><th class="text-center">Chamados abertos no mês</th></tr></thead>
+        <tbody>
+          {% for d in dados_operadores %}
+          <tr><td>{{ d.pessoa.get_full_name|default:d.pessoa.username }}</td><td class="text-center"><span class="badge bg-primary fs-6">{{ d.chamados_abertos }}</span></td></tr>
+          {% empty %}<tr><td colspan="2" class="text-center text-muted py-4">Nenhum operador cadastrado.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ---------------- CHAMADOS DO MÊS ---------------- #}
+  <div class="tab-pane fade" id="chamados">
+    <div class="row g-3 mb-3">
+      <div class="col-md-4">
+        <div class="kpi-card" style="background:#2563eb;"><div class="rotulo">Total de chamados em {{ mes_ref|date:"F/Y" }}</div><div class="valor">{{ total_chamados_mes }}</div></div>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="card p-3">
+          <h6>Por tipo</h6>
+          <table class="table table-sm mb-0">
+            {% for t in por_tipo %}<tr><td>{{ t.rotulo }}</td><td class="text-end fw-semibold">{{ t.qtd }}</td></tr>{% empty %}<tr><td class="text-muted">Nenhum chamado no mês.</td></tr>{% endfor %}
+          </table>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card p-3">
+          <h6>Por status</h6>
+          <table class="table table-sm mb-0">
+            {% for s in por_status %}<tr><td>{{ s.rotulo }}</td><td class="text-end fw-semibold">{{ s.qtd }}</td></tr>{% endfor %}
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="card p-3 mt-3">
+      <h6><i class="bi bi-trophy"></i> Meses com mais chamados (histórico)</h6>
+      <table class="table table-sm mb-0">
+        <thead><tr><th>Mês</th><th class="text-end">Chamados</th></tr></thead>
+        <tbody>
+          {% for r in ranking_meses %}<tr><td>{{ r.mes_ano }}</td><td class="text-end fw-semibold">{{ r.qtd }}</td></tr>{% empty %}<tr><td class="text-muted">Sem dados suficientes ainda.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ---------------- CLIENTES ---------------- #}
+  <div class="tab-pane fade" id="clientes">
+    <div class="row g-3 mb-4">
+      <div class="col-md-4 col-6"><div class="kpi-card" style="background:#059669;"><div class="rotulo">Novos clientes (instalação)</div><div class="valor">{{ novos_count }}</div></div></div>
+      <div class="col-md-4 col-6"><div class="kpi-card" style="background:#dc2626;"><div class="rotulo">Cancelamentos</div><div class="valor">{{ cancelados_count }}</div></div></div>
+      <div class="col-md-4 col-6"><div class="kpi-card" style="background:#7c3aed;"><div class="rotulo">Retornos (chamado repetido em 30 dias)</div><div class="valor">{{ retornos_count }}</div></div></div>
+    </div>
+    <h6>Clientes que retornaram em {{ mes_ref|date:"F/Y" }}</h6>
+    <div class="card">
+      <table class="table mb-0 align-middle">
+        <thead class="table-light"><tr><th>Cliente</th><th>Tipo do chamado</th><th>Aberto em</th><th>Atendido da última vez por</th></tr></thead>
+        <tbody>
+          {% for c in retornos_lista %}
+          <tr>
+            <td>{{ c.cliente.nome }}</td>
+            <td>{{ c.get_tipo_display }}</td>
+            <td class="text-muted small">{{ c.criado_em|date:"d/m/Y H:i" }}</td>
+            <td>{% if c.tecnico_ultimo_atendimento %}{{ c.tecnico_ultimo_atendimento.get_full_name|default:c.tecnico_ultimo_atendimento.username }}{% else %}—{% endif %}</td>
+          </tr>
+          {% empty %}<tr><td colspan="4" class="text-center text-muted py-4">Nenhum retorno nesse mês.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ---------------- FINANCEIRO / CRESCIMENTO ---------------- #}
+  <div class="tab-pane fade" id="crescimento">
+    <div class="row g-3 mb-4">
+      <div class="col-md-3 col-6"><div class="kpi-card" style="background:#059669;"><div class="rotulo">Novos clientes (R$)</div><div class="valor">+R$ {{ receita_nova|floatformat:2 }}</div></div></div>
+      <div class="col-md-3 col-6"><div class="kpi-card" style="background:#dc2626;"><div class="rotulo">Cancelamentos (R$)</div><div class="valor">-R$ {{ receita_perdida|floatformat:2 }}</div></div></div>
+      <div class="col-md-3 col-6"><div class="kpi-card" style="background:#0891b2;"><div class="rotulo">Upgrade/Downgrade</div><div class="valor">{% if ajuste_planos >= 0 %}+{% endif %}R$ {{ ajuste_planos|floatformat:2 }}</div></div></div>
+      <div class="col-md-3 col-6"><div class="kpi-card" style="background:{% if saldo_mes >= 0 %}#059669{% else %}#dc2626{% endif %};"><div class="rotulo">Saldo do mês</div><div class="valor">{% if saldo_mes >= 0 %}+{% endif %}R$ {{ saldo_mes|floatformat:2 }}</div><div class="small mt-1" style="opacity:.9;">{% if saldo_mes >= 0 %}Crescimento{% else %}Queda{% endif %} de {{ percentual_saldo|floatformat:1 }}%</div></div></div>
+    </div>
+    <div class="card p-3">
+      <h6 class="mb-3">Tendência dos últimos 12 meses (saldo em R$)</h6>
+      <canvas id="graficoTendencia" height="80"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const ctx = document.getElementById("graficoTendencia");
+  if (!ctx) return;
+  const labels = [{% for t in tendencia %}"{{ t.mes_ano }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+  const valores = [{% for t in tendencia %}{{ t.saldo }}{% if not forloop.last %},{% endif %}{% endfor %}];
+  new Chart(ctx, {
+    type: "line",
+    data: { labels: labels, datasets: [{ label: "Saldo (R$)", data: valores, borderColor: "#2563eb", backgroundColor: "rgba(37,99,235,.15)", fill: true, tension: .25 }] },
+    options: { responsive: true, plugins: { legend: { display: false } } },
+  });
+});
+</script>
+{% endblock %}

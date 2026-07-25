@@ -83,7 +83,6 @@
     <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#fluxo">Fluxo de Caixa</a></li>
   </ul>
   <div class="d-flex gap-2">
-    <a href="{% url 'contas_pagar' %}?mes={{ mes }}&ano={{ ano }}" class="btn btn-outline-warning btn-sm"><i class="bi bi-receipt"></i> Contas a Pagar</a>
     <a href="{% url 'financeiro_export_excel' %}" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-excel"></i> Excel</a>
     <a href="{% url 'financeiro_export_pdf' %}" class="btn btn-outline-danger btn-sm"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
   </div>

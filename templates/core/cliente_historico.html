@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block titulo %}Histórico de {{ cliente.nome }}{% endblock %}
+{% block conteudo %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h5 class="mb-0">{{ cliente.nome }}</h5>
+    <p class="text-muted small mb-0">{{ cliente.plano }} · {{ cliente.endereco_completo }}</p>
+  </div>
+  <a href="{% url 'cliente_list' %}" class="btn btn-outline-secondary">← Voltar para clientes</a>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3 col-6"><div class="kpi-card" style="background:#2563eb;"><div class="rotulo">Total de chamados</div><div class="valor">{{ total_chamados }}</div></div></div>
+  {% for ano, qtd in chamados_por_ano %}
+  <div class="col-md-3 col-6"><div class="kpi-card" style="background:#0891b2;"><div class="rotulo">Chamados em {{ ano }}</div><div class="valor">{{ qtd }}</div></div></div>
+  {% endfor %}
+</div>
+
+<h6 class="mb-2"><i class="bi bi-headset"></i> Histórico de Chamados</h6>
+<div class="card mb-4">
+  <table class="table mb-0 align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Problema</th><th>Prioridade</th><th>Status</th><th>Aberto por</th><th>Técnico</th>
+        <th>Aberto em</th><th>Pego às</th><th>Finalizado às</th><th>Duração</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in chamados %}
+      <tr>
+        <td>
+          {{ c.get_tipo_display }}
+          {% if c.eh_retorno %}<span class="badge bg-danger ms-1">Retorno</span>{% endif %}
+          {% if c.descricao %}<div class="text-muted" style="font-size:11px;">{{ c.descricao }}</div>{% endif %}
+          {% if c.observacao_fechamento %}<div class="text-muted" style="font-size:11px;">Fechamento: {{ c.observacao_fechamento }}</div>{% endif %}
+        </td>
+        <td>{{ c.get_prioridade_display }}</td>
+        <td>
+          {% if c.status == "aberto" %}<span class="badge bg-danger-subtle text-danger">Aberto</span>
+          {% elif c.status == "andamento" %}<span class="badge bg-warning-subtle text-warning-emphasis">Em andamento</span>
+          {% elif c.status == "concluido" %}<span class="badge bg-success-subtle text-success">Concluído</span>
+          {% else %}<span class="badge bg-secondary-subtle">Cancelado</span>{% endif %}
+        </td>
+        <td>{% if c.aberto_por %}{{ c.aberto_por.get_full_name|default:c.aberto_por.username }}{% else %}—{% endif %}</td>
+        <td>{% if c.tecnico %}{{ c.tecnico.get_full_name|default:c.tecnico.username }}{% else %}—{% endif %}</td>
+        <td class="text-muted small">{{ c.criado_em|date:"d/m/Y H:i" }}</td>
+        <td class="text-muted small">{{ c.pego_em|date:"d/m/Y H:i"|default:"—" }}</td>
+        <td class="text-muted small">{{ c.concluido_em|date:"d/m/Y H:i"|default:"—" }}</td>
+        <td><span class="badge bg-light text-dark border">{{ c.duracao_formatada }}</span></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9" class="text-center text-muted py-4">Esse cliente nunca abriu chamado.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h6 class="mb-2"><i class="bi bi-cash-coin"></i> Histórico de Pagamentos</h6>
+<div class="card">
+  <table class="table mb-0 align-middle">
+    <thead class="table-light"><tr><th>Mês de referência</th><th>Data do pagamento</th><th class="text-end">Valor</th></tr></thead>
+    <tbody>
+      {% for p in pagamentos %}
+      <tr>
+        <td>{{ p.mes_referencia|date:"F/Y" }}</td>
+        <td>{{ p.data_pagamento|date:"d/m/Y" }}</td>
+        <td class="text-end">R$ {{ p.valor|floatformat:2 }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="3" class="text-center text-muted py-4">Nenhum pagamento registrado ainda.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

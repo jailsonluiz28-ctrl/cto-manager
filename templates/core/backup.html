@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block titulo %}Backup do Banco de Dados{% endblock %}
+{% block conteudo %}
+<div class="alert alert-info small">
+  <i class="bi bi-info-circle"></i> O sistema já faz <strong>1 backup automático por dia</strong>, toda vez
+  que o servidor é ligado. Além disso, você pode gerar um backup manual agora e baixar o arquivo pra guardar
+  num pen drive, e-mail ou Google Drive. Restaurar um backup deixa o sistema (clientes, chamados, tudo)
+  <strong>exatamente igual</strong> a como estava no momento em que aquele backup foi salvo.
+  São guardados os 15 backups mais recentes automaticamente.
+</div>
+
+<form method="post" action="{% url 'backup_criar_agora' %}" class="mb-4">
+  {% csrf_token %}
+  <button class="btn btn-primary"><i class="bi bi-cloud-arrow-down"></i> Fazer backup agora</button>
+</form>
+
+<div class="card mb-4">
+  <table class="table mb-0 align-middle">
+    <thead class="table-light"><tr><th>Arquivo</th><th>Data</th><th class="text-end">Tamanho</th><th class="text-end">Ações</th></tr></thead>
+    <tbody>
+      {% for b in backups %}
+      <tr>
+        <td>{{ b.nome }}</td>
+        <td>{{ b.data|date:"d/m/Y H:i" }}</td>
+        <td class="text-end">{{ b.tamanho_kb }} KB</td>
+        <td class="text-end">
+          <a href="{% url 'backup_download' b.nome %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-download"></i> Baixar</a>
+          <a href="{% url 'backup_restaurar' b.nome %}" class="btn btn-sm btn-outline-warning"><i class="bi bi-arrow-counterclockwise"></i> Restaurar</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4" class="text-center text-muted py-4">Nenhum backup ainda — clique em "Fazer backup agora".</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card p-3" style="max-width:600px;">
+  <h6><i class="bi bi-upload"></i> Restaurar de um arquivo salvo em outro lugar</h6>
+  <p class="text-muted small">
+    Se você baixou um backup antes (pen drive, e-mail, Google Drive) e quer voltar o sistema pra aquele
+    ponto, envia o arquivo aqui.
+  </p>
+  <form method="post" action="{% url 'backup_upload_restaurar' %}" enctype="multipart/form-data" onsubmit="return confirm('Isso vai substituir todos os dados atuais pelo conteúdo desse arquivo. Um backup do estado atual será salvo antes, por segurança. Confirma?');">
+    {% csrf_token %}
+    <div class="mb-3">
+      <input type="file" name="arquivo_backup" accept=".sqlite3,.db" class="form-control" required>
+    </div>
+    <button class="btn btn-warning"><i class="bi bi-upload"></i> Enviar e Restaurar</button>
+  </form>
+</div>
+{% endblock %}

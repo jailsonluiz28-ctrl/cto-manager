@@ -6,6 +6,8 @@ urlpatterns = [
 
     path("clientes/", views.ClienteListView.as_view(), name="cliente_list"),
     path("clientes/buscar-json/", views.cliente_busca_json, name="cliente_busca_json"),
+    path("clientes/<int:pk>/verificar-retorno/", views.cliente_verificar_retorno, name="cliente_verificar_retorno"),
+    path("clientes/<int:pk>/historico/", views.cliente_historico, name="cliente_historico"),
     path("clientes/novo/", views.ClienteCreateView.as_view(), name="cliente_create"),
     path("clientes/<int:pk>/editar/", views.ClienteUpdateView.as_view(), name="cliente_update"),
     path("clientes/<int:pk>/excluir/", views.cliente_delete, name="cliente_delete"),
@@ -41,7 +43,9 @@ urlpatterns = [
     path("meus-chamados/<int:pk>/finalizar/", views.finalizar_chamado, name="finalizar_chamado"),
 
     path("financeiro/", views.financeiro, name="financeiro"),
+    path("financeiro/inadimplentes/", views.clientes_inadimplentes_view, name="clientes_inadimplentes"),
     path("financeiro/contas-pagar/", views.contas_pagar_view, name="contas_pagar"),
+    path("financeiro/contas-pagas/", views.contas_pagas_view, name="contas_pagas"),
     path("financeiro/debitos-congelados/", views.debitos_congelados_list, name="debitos_congelados"),
     path("financeiro/debitos-congelados/novo/", views.debito_congelado_create, name="debito_congelado_create"),
     path("financeiro/debitos-congelados/<int:pk>/negociar/", views.debito_congelado_negociar, name="debito_congelado_negociar"),
@@ -56,6 +60,12 @@ urlpatterns = [
     path("financeiro/exportar/pdf/", views.financeiro_export_pdf, name="financeiro_export_pdf"),
 
     path("relatorios/tecnicos/", views.relatorio_tecnicos, name="relatorio_tecnicos"),
+    path("relatorios/", views.relatorios_view, name="relatorios"),
+    path("backup/", views.backup_view, name="backup_view"),
+    path("backup/criar/", views.backup_criar_agora, name="backup_criar_agora"),
+    path("backup/baixar/<str:nome>/", views.backup_download, name="backup_download"),
+    path("backup/restaurar/<str:nome>/", views.backup_restaurar, name="backup_restaurar"),
+    path("backup/enviar-restaurar/", views.backup_upload_restaurar, name="backup_upload_restaurar"),
 
     path("usuarios/", views.UsuarioListView.as_view(), name="usuario_list"),
     path("usuarios/novo/", views.UsuarioCreateView.as_view(), name="usuario_create"),

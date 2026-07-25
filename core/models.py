@@ -155,6 +155,9 @@ class Chamado(models.Model):
     tecnico = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="chamados"
     )
+    aberto_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="chamados_abertos"
+    )
     descricao = models.TextField("Observação (do operador)", blank=True)
     observacao_fechamento = models.TextField("Observação de fechamento (do técnico)", blank=True)
     pego_em = models.DateTimeField(null=True, blank=True)
@@ -298,6 +301,8 @@ class ContaPagar(models.Model):
     forma_pagamento = models.CharField(max_length=20, choices=FORMA_PAGAMENTO_CHOICES, default="avista")
     parcela_atual = models.PositiveIntegerField(default=1)
     total_parcelas = models.PositiveIntegerField(default=1)
+
+    nota_fiscal = models.FileField("Nota fiscal (PDF)", upload_to="notas_fiscais/%Y/%m/", null=True, blank=True)
 
     class Meta:
         ordering = ["vencimento"]

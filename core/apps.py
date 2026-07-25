@@ -7,3 +7,11 @@ class CoreConfig(AppConfig):
 
     def ready(self):
         from . import signals  # noqa: F401
+
+        import sys
+        if "runserver" in sys.argv:
+            try:
+                from .backup_utils import fazer_backup_diario_se_necessario
+                fazer_backup_diario_se_necessario()
+            except Exception:
+                pass  # nunca deixa um problema de backup travar o sistema

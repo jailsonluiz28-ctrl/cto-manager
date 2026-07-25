@@ -1,6 +1,8 @@
 body { background-color: #f8f9fa; }
 .sidebar {
   width: 250px;
+  min-width: 250px;
+  flex-shrink: 0;
   min-height: 100vh;
   background-color: #0f172a;
 }
@@ -17,7 +19,7 @@ body { background-color: #f8f9fa; }
 }
 .menu-link:hover { background-color: #1e293b; color: #e2e8f0; }
 .menu-link.active { background-color: #2563eb; color: #fff; }
-.conteudo { min-height: 100vh; }
+.conteudo { min-height: 100vh; min-width: 0; overflow-x: auto; }
 .kpi-card { border-radius: 12px; padding: 16px; color: #fff; }
 .kpi-card .valor { font-size: 26px; font-weight: 700; }
 .kpi-card .rotulo { font-size: 12px; opacity: .9; }

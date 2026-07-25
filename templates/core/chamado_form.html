@@ -16,6 +16,8 @@
       {% if form.cliente.errors %}<div class="text-danger small">{{ form.cliente.errors }}</div>{% endif %}
     </div>
 
+    <div id="aviso_retorno" class="alert alert-warning small d-none"></div>
+
     {% for field in form %}
       {% if field.name != "cliente" %}
       <div class="mb-3">
@@ -38,10 +40,36 @@ document.addEventListener("DOMContentLoaded", function () {
   const busca = document.getElementById("cliente_busca");
   const idInput = document.getElementById("id_cliente");
   const sugestoesBox = document.getElementById("cliente_sugestoes");
+  const avisoRetorno = document.getElementById("aviso_retorno");
   let timeoutId = null;
+
+  function verificarRetorno(clienteId) {
+    if (!clienteId) { avisoRetorno.classList.add("d-none"); return; }
+    fetch("/clientes/" + clienteId + "/verificar-retorno/")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.retorno) {
+          let texto = "<i class='bi bi-exclamation-triangle-fill'></i> <strong>Atenção — possível retorno:</strong> " +
+            "esse cliente abriu um chamado em <strong>" + data.info.data + "</strong> relatando " +
+            "\"" + data.info.tipo + "\"";
+          if (data.info.descricao) texto += " — obs: " + data.info.descricao;
+          texto += ". Status atual: " + data.info.status;
+          if (data.info.tecnico) texto += " (técnico: " + data.info.tecnico + ")";
+          texto += ".";
+          avisoRetorno.innerHTML = texto;
+          avisoRetorno.classList.remove("d-none");
+        } else {
+          avisoRetorno.classList.add("d-none");
+        }
+      });
+  }
+
+  // Se já veio um cliente pré-selecionado (ex: botão "Abrir chamado" na lista de clientes)
+  if (idInput.value) verificarRetorno(idInput.value);
 
   busca.addEventListener("input", function () {
     idInput.value = "";
+    avisoRetorno.classList.add("d-none");
     const termo = busca.value.trim();
     clearTimeout(timeoutId);
     if (termo.length < 2) { sugestoesBox.innerHTML = ""; return; }
@@ -60,6 +88,7 @@ document.addEventListener("DOMContentLoaded", function () {
               busca.value = c.nome;
               idInput.value = c.id;
               sugestoesBox.innerHTML = "";
+              verificarRetorno(c.id);
             });
             sugestoesBox.appendChild(item);
           });

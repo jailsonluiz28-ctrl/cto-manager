@@ -39,7 +39,8 @@
     {% if user.role == "admin" %}
     <div class="menu-secao mt-3">ADMINISTRAÇÃO</div>
     <a class="menu-link {% if request.resolver_match.url_name == 'usuario_list' or request.resolver_match.url_name == 'usuario_create' or request.resolver_match.url_name == 'usuario_update' %}active{% endif %}" href="{% url 'usuario_list' %}"><i class="bi bi-person-gear"></i> Usuários</a>
-    <a class="menu-link {% if request.resolver_match.url_name == 'relatorio_tecnicos' %}active{% endif %}" href="{% url 'relatorio_tecnicos' %}"><i class="bi bi-graph-up"></i> Relatório de Técnicos</a>
+    <a class="menu-link {% if request.resolver_match.url_name == 'relatorios' %}active{% endif %}" href="{% url 'relatorios' %}"><i class="bi bi-graph-up"></i> Relatórios</a>
+    <a class="menu-link {% if request.resolver_match.url_name == 'backup_view' %}active{% endif %}" href="{% url 'backup_view' %}"><i class="bi bi-cloud-arrow-down"></i> Backup</a>
     <a class="menu-link" href="{% url 'admin:index' %}"><i class="bi bi-file-earmark-text"></i> Django Admin</a>
     {% endif %}
     {% else %}

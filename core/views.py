@@ -1,5 +1,6 @@
 import json
-from datetime import date, timedelta
+import shutil
+from datetime import date, datetime, timedelta
 
 import openpyxl
 from openpyxl.utils import get_column_letter
@@ -9,16 +10,19 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.units import cm
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import HttpResponse, JsonResponse
+import re
+from django.db import models, connections
+from django.http import HttpResponse, JsonResponse, FileResponse, Http404
+from .backup_utils import fazer_backup, listar_backups, BACKUPS_DIR
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views.generic import ListView, CreateView, UpdateView, DetailView
 
-from django.db import models
 from django.db.models import Sum, Q
 
 from .models import Plano, CTO, Cliente, Chamado, ContaPagar, ChamadoAnexo, LogAtividade, Pagamento, MovimentacaoReceita, DebitoCongelado
@@ -234,6 +238,31 @@ class ClienteCanceladosListView(SomenteOperacaoMixin, ListView):
         return Cliente.objects.filter(status="cancelado").select_related("plano", "cto").order_by("-data_cancelamento")
 
 
+@somente_operacao
+def cliente_historico(request, pk):
+    cliente = get_object_or_404(Cliente, pk=pk)
+    chamados = (
+        Chamado.objects.filter(cliente=cliente)
+        .select_related("tecnico", "aberto_por")
+        .order_by("-criado_em")
+    )
+    pagamentos = cliente.pagamentos.order_by("-mes_referencia")
+
+    chamados_por_ano = {}
+    for c in chamados:
+        ano = c.criado_em.year
+        chamados_por_ano[ano] = chamados_por_ano.get(ano, 0) + 1
+
+    context = {
+        "cliente": cliente,
+        "chamados": chamados,
+        "pagamentos": pagamentos,
+        "total_chamados": chamados.count(),
+        "chamados_por_ano": sorted(chamados_por_ano.items(), reverse=True),
+    }
+    return render(request, "core/cliente_historico.html", context)
+
+
 # ---------------------------------------------------------------------------
 # CTOs (leitura: qualquer perfil logado / escrita: admin+operador)
 # ---------------------------------------------------------------------------
@@ -330,7 +359,7 @@ class ChamadoListView(SomenteOperacaoMixin, ListView):
     context_object_name = "chamados"
 
     def get_queryset(self):
-        qs = super().get_queryset().exclude(status="concluido").select_related("cliente", "tecnico")
+        qs = super().get_queryset().exclude(status__in=["concluido", "cancelado"]).select_related("cliente", "tecnico")
         status = self.request.GET.get("status")
         tecnico_id = self.request.GET.get("tecnico")
         if status:
@@ -342,9 +371,35 @@ class ChamadoListView(SomenteOperacaoMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["tecnicos"] = User.objects.filter(role="tecnico")
-        context["status_choices"] = [c for c in Chamado.STATUS_CHOICES if c[0] != "concluido"]
+        context["status_choices"] = [c for c in Chamado.STATUS_CHOICES if c[0] not in ("concluido", "cancelado")]
         context["prioridade_choices"] = Chamado.PRIORIDADE_CHOICES
         return context
+
+
+def _info_retorno_cliente(cliente, excluir_pk=None):
+    """Verifica se o cliente teve chamado nos últimos 30 dias e devolve os detalhes,
+    pra avisar o operador antes mesmo de abrir o chamado novo."""
+    limite = timezone.now() - timedelta(days=30)
+    qs = Chamado.objects.filter(cliente=cliente, criado_em__gte=limite).exclude(status="cancelado")
+    if excluir_pk:
+        qs = qs.exclude(pk=excluir_pk)
+    anterior = qs.order_by("-criado_em").first()
+    if not anterior:
+        return None
+    return {
+        "tipo": anterior.get_tipo_display(),
+        "descricao": anterior.descricao or "",
+        "data": anterior.criado_em.strftime("%d/%m/%Y às %H:%M"),
+        "tecnico": anterior.tecnico.get_full_name() if anterior.tecnico else None,
+        "status": anterior.get_status_display(),
+    }
+
+
+@login_required
+def cliente_verificar_retorno(request, pk):
+    cliente = get_object_or_404(Cliente, pk=pk)
+    info = _info_retorno_cliente(cliente)
+    return JsonResponse({"retorno": info is not None, "info": info})
 
 
 class ChamadoCreateView(SomenteOperacaoMixin, CreateView):
@@ -368,6 +423,7 @@ class ChamadoCreateView(SomenteOperacaoMixin, CreateView):
         return context
 
     def form_valid(self, form):
+        form.instance.aberto_por = self.request.user
         response = super().form_valid(form)
         chamado = self.object
 
@@ -623,6 +679,40 @@ def _redirect_contas_pagar(request):
 # FINANCEIRO (admin + operador)
 # ---------------------------------------------------------------------------
 
+def _serie_completa_paga(conta):
+    """Verifica se TODAS as parcelas dessa compra já foram pagas (ou se é uma
+    conta simples de uma vez só, já paga). Contas fixas (recorrentes) nunca
+    'terminam', então nunca entram aqui."""
+    if conta.recorrente:
+        return False
+    raiz = conta.gerada_de or conta
+    serie = ContaPagar.objects.filter(Q(pk=raiz.pk) | Q(gerada_de=raiz))
+    if serie.count() < raiz.total_parcelas:
+        return False
+    return not serie.exclude(status="pago").exists()
+
+
+@somente_operacao
+def contas_pagas_view(request):
+    resultados = []
+    raizes = ContaPagar.objects.filter(gerada_de__isnull=True, recorrente=False)
+    for raiz in raizes:
+        serie = ContaPagar.objects.filter(Q(pk=raiz.pk) | Q(gerada_de=raiz))
+        if serie.count() >= raiz.total_parcelas and not serie.exclude(status="pago").exists():
+            ultima = serie.order_by("-vencimento").first()
+            total_pago = sum((c.valor for c in serie), 0)
+            resultados.append({
+                "descricao": raiz.descricao,
+                "total_parcelas": raiz.total_parcelas,
+                "total_pago": total_pago,
+                "ultimo_vencimento": ultima.vencimento,
+                "nota_fiscal": ultima.nota_fiscal or raiz.nota_fiscal,
+                "conta_pk": ultima.pk,
+            })
+    resultados.sort(key=lambda r: r["ultimo_vencimento"], reverse=True)
+    return render(request, "core/contas_pagas.html", {"resultados": resultados})
+
+
 @somente_operacao
 def contas_pagar_view(request):
     hoje = timezone.now().date()
@@ -631,9 +721,10 @@ def contas_pagar_view(request):
 
     garantir_contas_recorrentes(ano, mes)
 
-    contas_pagar = ContaPagar.objects.filter(vencimento__year=ano, vencimento__month=mes)
-    total_pagar = sum((c.valor for c in contas_pagar.exclude(status="pago")), 0)
-    total_pago = sum((c.valor for c in contas_pagar.filter(status="pago")), 0)
+    contas_pagar_bruto = ContaPagar.objects.filter(vencimento__year=ano, vencimento__month=mes)
+    contas_pagar = [c for c in contas_pagar_bruto if not _serie_completa_paga(c)]
+    total_pagar = sum((c.valor for c in contas_pagar if c.status != "pago"), 0)
+    total_pago = sum((c.valor for c in contas_pagar if c.status == "pago"), 0)
 
     context = {
         "contas_pagar": contas_pagar,
@@ -713,6 +804,46 @@ def debito_congelado_delete(request, pk):
         messages.success(request, f"Débito \"{descricao}\" excluído.")
         return redirect("debitos_congelados")
     return render(request, "core/debito_congelado_confirm_delete.html", {"debito": debito})
+
+
+def _dias_em_atraso(cliente):
+    """Calcula há quantos dias o cliente está sem pagar, olhando o mês seguinte
+    ao último pagamento registrado (ou desde a instalação, se nunca pagou)."""
+    hoje = timezone.now().date()
+    ultimo_pagamento = cliente.pagamentos.order_by("-mes_referencia").first()
+
+    if ultimo_pagamento:
+        prox_mes = ultimo_pagamento.mes_referencia.month % 12 + 1
+        prox_ano = ultimo_pagamento.mes_referencia.year + (1 if ultimo_pagamento.mes_referencia.month == 12 else 0)
+    else:
+        base = cliente.data_ativacao or cliente.criado_em.date()
+        prox_mes, prox_ano = base.month, base.year
+
+    dia = min(cliente.dia_vencimento or 10, 28)
+    data_vencimento = date(prox_ano, prox_mes, dia)
+    return max((hoje - data_vencimento).days, 0)
+
+
+def _formatar_atraso(dias):
+    if dias <= 0:
+        return "vence em breve"
+    meses, resto = divmod(dias, 30)
+    if meses > 0 and resto > 0:
+        return f"{meses} {'mês' if meses == 1 else 'meses'} e {resto} {'dia' if resto == 1 else 'dias'} em aberto"
+    if meses > 0:
+        return f"{meses} {'mês' if meses == 1 else 'meses'} em aberto"
+    return f"{dias} {'dia' if dias == 1 else 'dias'} em aberto"
+
+
+@somente_operacao
+def clientes_inadimplentes_view(request):
+    clientes = Cliente.objects.filter(status="inadimplente").select_related("plano")
+    dados = []
+    for c in clientes:
+        dias = _dias_em_atraso(c)
+        dados.append({"cliente": c, "dias": dias, "atraso_texto": _formatar_atraso(dias)})
+    dados.sort(key=lambda d: d["dias"], reverse=True)
+    return render(request, "core/clientes_inadimplentes.html", {"dados": dados})
 
 
 @somente_operacao
@@ -833,7 +964,7 @@ def registrar_pagamento(request, pk):
 @somente_operacao
 def conta_pagar_create(request):
     if request.method == "POST":
-        form = ContaPagarForm(request.POST)
+        form = ContaPagarForm(request.POST, request.FILES)
         if form.is_valid():
             conta = form.save(commit=False)
             parcelas = form.cleaned_data.get("parcelas") or 1
@@ -859,7 +990,7 @@ def conta_pagar_create(request):
 def conta_pagar_update(request, pk):
     conta = get_object_or_404(ContaPagar, pk=pk)
     if request.method == "POST":
-        form = ContaPagarForm(request.POST, instance=conta)
+        form = ContaPagarForm(request.POST, request.FILES, instance=conta)
         if form.is_valid():
             form.save()
             messages.success(request, "Conta a pagar atualizada!")
@@ -1014,6 +1145,201 @@ def relatorio_tecnicos(request):
     return render(request, "core/relatorio_tecnicos.html", context)
 
 
+@user_passes_test(lambda u: u.is_authenticated and u.role == "admin")
+def backup_view(request):
+    return render(request, "core/backup.html", {"backups": listar_backups()})
+
+
+@user_passes_test(lambda u: u.is_authenticated and u.role == "admin")
+def backup_criar_agora(request):
+    if request.method == "POST":
+        destino = fazer_backup()
+        if destino:
+            messages.success(request, f"Backup criado agora: {destino.name}")
+        else:
+            messages.error(request, "Não foi possível criar o backup (db.sqlite3 não encontrado).")
+    return redirect("backup_view")
+
+
+@user_passes_test(lambda u: u.is_authenticated and u.role == "admin")
+def backup_download(request, nome):
+    if not re.match(r"^backup_[\d\-_]+\.sqlite3$", nome):
+        raise Http404()
+    caminho = BACKUPS_DIR / nome
+    if not caminho.exists():
+        raise Http404()
+    return FileResponse(open(caminho, "rb"), as_attachment=True, filename=nome)
+
+
+@user_passes_test(lambda u: u.is_authenticated and u.role == "admin")
+def backup_restaurar(request, nome):
+    if not re.match(r"^backup_[\d\-_]+\.sqlite3$", nome):
+        raise Http404()
+    caminho = BACKUPS_DIR / nome
+    if not caminho.exists():
+        raise Http404()
+
+    if request.method == "POST":
+        fazer_backup()  # guarda o estado atual antes de sobrescrever, por segurança
+        connections.close_all()
+        shutil.copy2(caminho, settings.BASE_DIR / "db.sqlite3")
+        messages.success(
+            request,
+            f"Banco de dados restaurado a partir de \"{nome}\". O sistema agora está exatamente "
+            f"como estava quando esse backup foi salvo.",
+        )
+        return redirect("backup_view")
+
+    return render(request, "core/backup_confirmar_restaurar.html", {"nome": nome})
+
+
+@user_passes_test(lambda u: u.is_authenticated and u.role == "admin")
+def backup_upload_restaurar(request):
+    if request.method == "POST":
+        arquivo = request.FILES.get("arquivo_backup")
+        if not arquivo:
+            messages.error(request, "Escolha um arquivo de backup (.sqlite3) antes de enviar.")
+            return redirect("backup_view")
+        if not arquivo.name.lower().endswith((".sqlite3", ".db")):
+            messages.error(request, "O arquivo precisa ser um backup .sqlite3 (o mesmo tipo que o sistema gera).")
+            return redirect("backup_view")
+
+        fazer_backup()  # guarda o estado atual antes de sobrescrever, por segurança
+
+        BACKUPS_DIR.mkdir(exist_ok=True)
+        nome_temp = f"enviado_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.sqlite3"
+        destino_temp = BACKUPS_DIR / nome_temp
+        with open(destino_temp, "wb") as f:
+            for pedaco in arquivo.chunks():
+                f.write(pedaco)
+
+        connections.close_all()
+        shutil.copy2(destino_temp, settings.BASE_DIR / "db.sqlite3")
+        messages.success(request, "Backup enviado e restaurado com sucesso! O sistema já está igual ao arquivo que você subiu.")
+        return redirect("backup_view")
+
+    return redirect("backup_view")
+
+
+@user_passes_test(lambda u: u.is_authenticated and u.role == "admin")
+def relatorios_view(request):
+    hoje = timezone.now().date()
+    ano = int(request.GET.get("ano", hoje.year))
+    mes = int(request.GET.get("mes", hoje.month))
+    tecnico_filtro = request.GET.get("tecnico", "")
+    operador_filtro = request.GET.get("operador", "")
+
+    # --- 1. Técnicos: quantos chamados cada um atendeu ---
+    tecnicos_qs = User.objects.filter(role="tecnico")
+    if tecnico_filtro:
+        tecnicos_qs = tecnicos_qs.filter(pk=tecnico_filtro)
+    dados_tecnicos = []
+    for t in tecnicos_qs:
+        chamados_t = Chamado.objects.filter(tecnico=t)
+        chamados_mes_t = chamados_t.filter(criado_em__year=ano, criado_em__month=mes)
+        dados_tecnicos.append({
+            "pessoa": t,
+            "concluidos_mes": chamados_mes_t.filter(status="concluido").count(),
+            "em_andamento": chamados_t.filter(status="andamento").count(),
+            "cancelados": chamados_t.filter(status="cancelado").count(),
+            "concluidos_total": chamados_t.filter(status="concluido").count(),
+        })
+
+    # --- 2. Operadores: quantos chamados cada um abriu ---
+    operadores_qs = User.objects.filter(role__in=["operador", "admin"])
+    if operador_filtro:
+        operadores_qs = operadores_qs.filter(pk=operador_filtro)
+    dados_operadores = []
+    for o in operadores_qs:
+        qtd = Chamado.objects.filter(aberto_por=o, criado_em__year=ano, criado_em__month=mes).count()
+        dados_operadores.append({"pessoa": o, "chamados_abertos": qtd})
+
+    # --- 3. Total de chamados do mês (por tipo, por status) e ranking histórico ---
+    chamados_mes_qs = Chamado.objects.filter(criado_em__year=ano, criado_em__month=mes)
+    total_chamados_mes = chamados_mes_qs.count()
+
+    por_tipo = []
+    for valor, rotulo in Chamado.TIPO_CHOICES:
+        qtd = chamados_mes_qs.filter(tipo=valor).count()
+        if qtd:
+            por_tipo.append({"rotulo": rotulo, "qtd": qtd})
+
+    por_status = []
+    for valor, rotulo in Chamado.STATUS_CHOICES:
+        por_status.append({"rotulo": rotulo, "qtd": chamados_mes_qs.filter(status=valor).count()})
+
+    contagem_meses = {}
+    for c in Chamado.objects.all():
+        chave = (c.criado_em.year, c.criado_em.month)
+        contagem_meses[chave] = contagem_meses.get(chave, 0) + 1
+    ranking_meses = sorted(contagem_meses.items(), key=lambda x: x[1], reverse=True)[:6]
+    ranking_meses = [{"mes_ano": f"{MESES_PT[k[1]]}/{k[0]}", "qtd": v} for k, v in ranking_meses]
+
+    # --- 4. Clientes: novos (instalação), cancelados, retornos no mês ---
+    novos_count = MovimentacaoReceita.objects.filter(
+        tipo="novo_cliente", criado_em__year=ano, criado_em__month=mes
+    ).count()
+    cancelados_count = MovimentacaoReceita.objects.filter(
+        tipo="cancelamento", criado_em__year=ano, criado_em__month=mes
+    ).count()
+    retornos_qs = Chamado.objects.filter(
+        eh_retorno=True, criado_em__year=ano, criado_em__month=mes
+    ).select_related("cliente", "tecnico_ultimo_atendimento")
+
+    # --- 5. Financeiro / crescimento: saldo do mês e tendência dos últimos 12 meses ---
+    movs_mes = MovimentacaoReceita.objects.filter(criado_em__year=ano, criado_em__month=mes)
+    receita_nova = sum((m.valor_novo for m in movs_mes.filter(tipo="novo_cliente")), 0)
+    receita_perdida = sum((m.valor_anterior for m in movs_mes.filter(tipo="cancelamento")), 0)
+    ajuste_planos = (
+        sum((m.diferenca() for m in movs_mes.filter(tipo="upgrade")), 0)
+        + sum((m.diferenca() for m in movs_mes.filter(tipo="downgrade")), 0)
+    )
+    saldo_mes = receita_nova - receita_perdida + ajuste_planos
+    esperado_mes = sum((c.valor_mensal() for c in Cliente.objects.exclude(status="inativo")), 0)
+    percentual_saldo = (saldo_mes / esperado_mes * 100) if esperado_mes else 0
+
+    tendencia = []
+    base_mes = date(ano, mes, 1)
+    for i in range(11, -1, -1):
+        ano_i = base_mes.year + ((base_mes.month - i - 1) // 12)
+        mes_i = ((base_mes.month - i - 1) % 12) + 1
+        movs_i = MovimentacaoReceita.objects.filter(criado_em__year=ano_i, criado_em__month=mes_i)
+        rn = sum((m.valor_novo for m in movs_i.filter(tipo="novo_cliente")), 0)
+        rp = sum((m.valor_anterior for m in movs_i.filter(tipo="cancelamento")), 0)
+        aj = (
+            sum((m.diferenca() for m in movs_i.filter(tipo="upgrade")), 0)
+            + sum((m.diferenca() for m in movs_i.filter(tipo="downgrade")), 0)
+        )
+        tendencia.append({"mes_ano": f"{MESES_PT[mes_i][:3]}/{ano_i}", "saldo": rn - rp + aj})
+
+    context = {
+        "mes": mes, "ano": ano, "mes_ref": date(ano, mes, 1),
+        "meses_opcoes": [(i, MESES_PT[i]) for i in range(1, 13)],
+        "anos_opcoes": list(range(hoje.year - 2, hoje.year + 1)),
+        "tecnicos_todos": User.objects.filter(role="tecnico"),
+        "operadores_todos": User.objects.filter(role__in=["operador", "admin"]),
+        "tecnico_filtro": tecnico_filtro,
+        "operador_filtro": operador_filtro,
+        "dados_tecnicos": dados_tecnicos,
+        "dados_operadores": dados_operadores,
+        "total_chamados_mes": total_chamados_mes,
+        "por_tipo": por_tipo,
+        "por_status": por_status,
+        "ranking_meses": ranking_meses,
+        "novos_count": novos_count,
+        "cancelados_count": cancelados_count,
+        "retornos_count": retornos_qs.count(),
+        "retornos_lista": retornos_qs,
+        "receita_nova": receita_nova,
+        "receita_perdida": receita_perdida,
+        "ajuste_planos": ajuste_planos,
+        "saldo_mes": saldo_mes,
+        "percentual_saldo": percentual_saldo,
+        "tendencia": tendencia,
+    }
+    return render(request, "core/relatorios.html", context)
+
+
 # ---------------------------------------------------------------------------
 # EXPORTAÇÃO: EXCEL E PDF (admin + operador)
 # ---------------------------------------------------------------------------
@@ -1035,16 +1361,24 @@ def cliente_export_excel(request):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Clientes"
-    cabecalho = ["Nome", "CPF/CNPJ", "Telefone", "Plano", "CTO", "Porta", "Status", "Mensalidade", "Bairro", "Cidade"]
+    cabecalho = [
+        "Nome", "CPF/CNPJ", "Data de Nascimento", "Telefone", "Rua", "Número", "Bairro", "Cidade",
+        "Plano", "CTO", "Porta", "Login PPPoE", "Senha PPPoE",
+        "Equipamento (de quem)", "Tipo de Equipamento", "Status", "Mensalidade",
+    ]
     ws.append(cabecalho)
     for c in Cliente.objects.select_related("plano", "cto").all():
         ws.append([
-            c.nome, c.cpf_cnpj, c.telefone,
+            c.nome, c.cpf_cnpj,
+            c.data_nascimento.strftime("%d/%m/%Y") if c.data_nascimento else "",
+            c.telefone, c.logradouro, c.numero, c.bairro, c.cidade,
             str(c.plano) if c.plano else "", str(c.cto) if c.cto else "", c.porta,
-            c.get_status_display(), float(c.valor_mensal()), c.bairro, c.cidade,
+            c.login_pppoe, c.senha_pppoe,
+            c.get_propriedade_equipamento_display(), c.get_tipo_equipamento_display(),
+            c.get_status_display(), float(c.valor_mensal()),
         ])
     for i in range(1, len(cabecalho) + 1):
-        ws.column_dimensions[get_column_letter(i)].width = 22
+        ws.column_dimensions[get_column_letter(i)].width = 20
 
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -1062,10 +1396,15 @@ def cliente_export_pdf(request):
     estilos = getSampleStyleSheet()
     elementos = [Paragraph("Relatório de Clientes - CTO Manager Pro", estilos["Title"]), Spacer(1, 12)]
 
-    dados = [["Nome", "Telefone", "Plano", "CTO/Porta", "Status", "Mensalidade"]]
+    dados = [["Nome", "Nascimento", "Endereço", "Login / Senha", "Equipamento", "CTO/Porta", "Status", "Mensalidade"]]
     for c in Cliente.objects.select_related("plano", "cto").all():
+        endereco = f"{c.logradouro or '-'}, {c.numero or 's/n'} - {c.bairro or '-'}"
+        login_senha = f"{c.login_pppoe or '-'} / {c.senha_pppoe or '-'}"
+        equipamento = f"{c.get_propriedade_equipamento_display()} ({c.get_tipo_equipamento_display()})"
         dados.append([
-            c.nome, c.telefone, str(c.plano) if c.plano else "-",
+            c.nome,
+            c.data_nascimento.strftime("%d/%m/%Y") if c.data_nascimento else "-",
+            endereco, login_senha, equipamento,
             f"{c.cto or '-'} / {c.porta or '-'}", c.get_status_display(), f"R$ {c.valor_mensal():.2f}",
         ])
     tabela = Table(dados, repeatRows=1)

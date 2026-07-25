@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block titulo %}Clientes Inadimplentes{% endblock %}
+{% block conteudo %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <p class="text-muted small mb-0">{{ dados|length }} cliente(s) inadimplente(s), ordenados do mais atrasado pro mais recente.</p>
+  <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">← Voltar</a>
+</div>
+
+<div class="card">
+  <table class="table mb-0 align-middle">
+    <thead class="table-light"><tr><th>Cliente</th><th>Telefone</th><th>Plano</th><th class="text-end">Mensalidade</th><th class="text-end">Situação</th></tr></thead>
+    <tbody>
+      {% for d in dados %}
+      <tr>
+        <td>{{ d.cliente.nome }}</td>
+        <td>{{ d.cliente.telefone }}</td>
+        <td>{{ d.cliente.plano }}</td>
+        <td class="text-end">R$ {{ d.cliente.valor_mensal|floatformat:2 }}</td>
+        <td class="text-end">
+          <span class="badge {% if d.dias > 30 %}bg-danger{% elif d.dias > 0 %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+            {{ d.atraso_texto }}
+          </span>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="text-center text-muted py-4">Nenhum cliente inadimplente no momento 🎉</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

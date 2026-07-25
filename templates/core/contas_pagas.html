@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block titulo %}Contas Pagas{% endblock %}
+{% block conteudo %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <ul class="nav nav-pills">
+    <li class="nav-item"><a class="nav-link" href="{% url 'contas_pagar' %}">Contas do mês</a></li>
+    <li class="nav-item"><a class="nav-link" href="{% url 'debitos_congelados' %}">Débitos Congelados</a></li>
+    <li class="nav-item"><a class="nav-link active" href="{% url 'contas_pagas' %}">Contas Pagas</a></li>
+  </ul>
+  <a href="{% url 'conta_pagar_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Registrar conta já paga</a>
+</div>
+
+<div class="alert alert-info small">
+  <i class="bi bi-archive"></i> Aqui ficam as compras <strong>já quitadas por completo</strong> — assim que
+  a última parcela de uma compra é paga, ela sai de "Contas do mês" e vem pra cá automaticamente, como
+  registro/demonstrativo. Contas fixas mensais nunca aparecem aqui, porque elas nunca "terminam".
+</div>
+
+<div class="card">
+  <table class="table mb-0 align-middle">
+    <thead class="table-light"><tr><th>Descrição</th><th>Parcelas</th><th>Último vencimento</th><th class="text-end">Total pago</th><th class="text-end">Nota fiscal</th></tr></thead>
+    <tbody>
+      {% for r in resultados %}
+      <tr>
+        <td>{{ r.descricao }}</td>
+        <td>{{ r.total_parcelas }}x</td>
+        <td>{{ r.ultimo_vencimento|date:"d/m/Y" }}</td>
+        <td class="text-end fw-semibold text-success">R$ {{ r.total_pago|floatformat:2 }}</td>
+        <td class="text-end">
+          {% if r.nota_fiscal %}
+          <a href="{{ r.nota_fiscal.url }}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-file-earmark-pdf"></i> Ver</a>
+          {% else %}
+          <a href="{% url 'conta_pagar_update' r.conta_pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-paperclip"></i> Anexar</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="text-center text-muted py-4">Nenhuma conta totalmente quitada ainda.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
