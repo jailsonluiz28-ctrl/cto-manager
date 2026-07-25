@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block titulo %}Débitos Congelados{% endblock %}
+{% block conteudo %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <ul class="nav nav-pills">
+    <li class="nav-item"><a class="nav-link" href="{% url 'contas_pagar' %}">Contas do mês</a></li>
+    <li class="nav-item"><a class="nav-link active" href="{% url 'debitos_congelados' %}">Débitos Congelados</a></li>
+  </ul>
+  <a href="{% url 'debito_congelado_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Novo débito congelado</a>
+</div>
+
+<div class="alert alert-info small">
+  <i class="bi bi-snow2"></i> Essas dívidas ficam <strong>fora do somatório mensal</strong> de Contas a Pagar
+  até você negociar. Quando negociar, ela vira parcelas normais e passa a contar no mês certinho.
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4 col-6">
+    <div class="kpi-card" style="background:#0891b2;">
+      <div class="rotulo">Total ainda congelado</div>
+      <div class="valor">R$ {{ total_congelado|floatformat:2 }}</div>
+      <div class="small mt-1" style="opacity:.9;">{{ debitos|length }} débito(s) em aberto</div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header bg-white">Débitos ainda não negociados</div>
+  <table class="table mb-0 align-middle">
+    <thead class="table-light"><tr><th>Descrição</th><th>De quando é</th><th>Observações</th><th class="text-end">Valor</th><th class="text-end">Ações</th></tr></thead>
+    <tbody>
+      {% for d in debitos %}
+      <tr>
+        <td>{{ d.descricao }}</td>
+        <td class="text-muted">{{ d.data_origem|date:"d/m/Y"|default:"—" }}</td>
+        <td class="text-muted">{{ d.observacoes|default:"—" }}</td>
+        <td class="text-end">R$ {{ d.valor|floatformat:2 }}</td>
+        <td class="text-end">
+          <a href="{% url 'debito_congelado_negociar' d.pk %}" class="btn btn-sm btn-success"><i class="bi bi-handshake"></i> Negociar</a>
+          <a href="{% url 'debito_congelado_delete' d.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="text-center text-muted py-4">Nenhum débito congelado no momento.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if negociados %}
+<div class="card">
+  <div class="card-header bg-white">Já negociados (histórico)</div>
+  <table class="table mb-0 align-middle">
+    <thead class="table-light"><tr><th>Descrição</th><th>Negociado em</th><th class="text-end">Valor original</th></tr></thead>
+    <tbody>
+      {% for d in negociados %}
+      <tr>
+        <td>{{ d.descricao }}</td>
+        <td class="text-muted">{{ d.negociado_em|date:"d/m/Y" }}</td>
+        <td class="text-end">R$ {{ d.valor|floatformat:2 }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

@@ -252,6 +252,32 @@ class Pagamento(models.Model):
         return f"{self.cliente.nome} - {self.mes_referencia.strftime('%m/%Y')}"
 
 
+class DebitoCongelado(models.Model):
+    """Dívidas antigas que ainda não foram negociadas — ficam de lado, fora do
+    somatório mensal, até o dia em que forem negociadas e virarem parcelas normais."""
+    descricao = models.CharField(max_length=200)
+    valor = models.DecimalField(max_digits=10, decimal_places=2)
+    data_origem = models.DateField(null=True, blank=True, help_text="De quando é essa dívida (opcional)")
+    observacoes = models.TextField(blank=True)
+
+    negociado = models.BooleanField(default=False)
+    negociado_em = models.DateTimeField(null=True, blank=True)
+    conta_pagar_gerada = models.ForeignKey(
+        "ContaPagar", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+
+    criado_em = models.DateTimeField(auto_now_add=True)
+    criado_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+
+    class Meta:
+        ordering = ["-criado_em"]
+        verbose_name = "Débito congelado"
+        verbose_name_plural = "Débitos congelados"
+
+    def __str__(self):
+        return self.descricao
+
+
 class ContaPagar(models.Model):
     STATUS_CHOICES = [("pendente", "Pendente"), ("agendado", "Agendado"), ("pago", "Pago")]
     FORMA_PAGAMENTO_CHOICES = [

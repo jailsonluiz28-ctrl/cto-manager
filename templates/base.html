@@ -34,6 +34,7 @@
 
     <div class="menu-secao mt-3">FINANCEIRO</div>
     <a class="menu-link {% if request.resolver_match.url_name == 'financeiro' %}active{% endif %}" href="{% url 'financeiro' %}"><i class="bi bi-cash-coin"></i> Financeiro</a>
+    <a class="menu-link {% if request.resolver_match.url_name == 'contas_pagar' or request.resolver_match.url_name == 'conta_pagar_create' or request.resolver_match.url_name == 'conta_pagar_update' %}active{% endif %}" href="{% url 'contas_pagar' %}"><i class="bi bi-receipt"></i> Contas a Pagar</a>
 
     {% if user.role == "admin" %}
     <div class="menu-secao mt-3">ADMINISTRAÇÃO</div>

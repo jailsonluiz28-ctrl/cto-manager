@@ -41,6 +41,11 @@ urlpatterns = [
     path("meus-chamados/<int:pk>/finalizar/", views.finalizar_chamado, name="finalizar_chamado"),
 
     path("financeiro/", views.financeiro, name="financeiro"),
+    path("financeiro/contas-pagar/", views.contas_pagar_view, name="contas_pagar"),
+    path("financeiro/debitos-congelados/", views.debitos_congelados_list, name="debitos_congelados"),
+    path("financeiro/debitos-congelados/novo/", views.debito_congelado_create, name="debito_congelado_create"),
+    path("financeiro/debitos-congelados/<int:pk>/negociar/", views.debito_congelado_negociar, name="debito_congelado_negociar"),
+    path("financeiro/debitos-congelados/<int:pk>/excluir/", views.debito_congelado_delete, name="debito_congelado_delete"),
     path("financeiro/contas-pagar/nova/", views.conta_pagar_create, name="conta_pagar_create"),
     path("financeiro/contas-pagar/<int:pk>/editar/", views.conta_pagar_update, name="conta_pagar_update"),
     path("financeiro/contas-pagar/<int:pk>/excluir/", views.conta_pagar_delete, name="conta_pagar_delete"),

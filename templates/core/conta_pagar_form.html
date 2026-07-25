@@ -17,7 +17,7 @@
     </div>
     {% endfor %}
     <div class="d-flex gap-2 justify-content-end">
-      <a href="{% url 'financeiro' %}?mes={{ mes }}&ano={{ ano }}#pagar" class="btn btn-outline-secondary">Cancelar</a>
+      <a href="{% url 'contas_pagar' %}?mes={{ mes }}&ano={{ ano }}" class="btn btn-outline-secondary">Cancelar</a>
       <button class="btn btn-primary" type="submit">Salvar</button>
     </div>
   </form>

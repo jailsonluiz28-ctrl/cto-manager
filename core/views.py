@@ -21,8 +21,8 @@ from django.views.generic import ListView, CreateView, UpdateView, DetailView
 from django.db import models
 from django.db.models import Sum, Q
 
-from .models import Plano, CTO, Cliente, Chamado, ContaPagar, ChamadoAnexo, LogAtividade, Pagamento, MovimentacaoReceita
-from .forms import ClienteForm, ChamadoForm, ContaPagarForm, CTOForm, PlanoForm, UsuarioCreateForm, UsuarioUpdateForm
+from .models import Plano, CTO, Cliente, Chamado, ContaPagar, ChamadoAnexo, LogAtividade, Pagamento, MovimentacaoReceita, DebitoCongelado
+from .forms import ClienteForm, ChamadoForm, ContaPagarForm, CTOForm, PlanoForm, UsuarioCreateForm, UsuarioUpdateForm, DebitoCongeladoForm, NegociarDebitoForm
 from .decorators import somente_operacao
 from .mixins import SomenteAdminMixin, SomenteOperacaoMixin
 from django.contrib.auth.models import Group, Permission
@@ -610,18 +610,110 @@ def garantir_contas_recorrentes(ano_alvo, mes_alvo):
             seguranca += 1
 
 
-def _redirect_financeiro(request, aba="pagar"):
+def _redirect_contas_pagar(request):
     mes = request.POST.get("mes") or request.GET.get("mes")
     ano = request.POST.get("ano") or request.GET.get("ano")
-    url = "/financeiro/"
+    url = "/financeiro/contas-pagar/"
     if mes and ano:
         url += f"?mes={mes}&ano={ano}"
-    return redirect(url + f"#{aba}")
+    return redirect(url)
 
 
 # ---------------------------------------------------------------------------
 # FINANCEIRO (admin + operador)
 # ---------------------------------------------------------------------------
+
+@somente_operacao
+def contas_pagar_view(request):
+    hoje = timezone.now().date()
+    ano = int(request.GET.get("ano", hoje.year))
+    mes = int(request.GET.get("mes", hoje.month))
+
+    garantir_contas_recorrentes(ano, mes)
+
+    contas_pagar = ContaPagar.objects.filter(vencimento__year=ano, vencimento__month=mes)
+    total_pagar = sum((c.valor for c in contas_pagar.exclude(status="pago")), 0)
+    total_pago = sum((c.valor for c in contas_pagar.filter(status="pago")), 0)
+
+    context = {
+        "contas_pagar": contas_pagar,
+        "total_pagar": total_pagar,
+        "total_pago": total_pago,
+        "mes": mes,
+        "ano": ano,
+        "mes_ref": date(ano, mes, 1),
+        "meses_opcoes": [(i, MESES_PT[i]) for i in range(1, 13)],
+        "anos_opcoes": list(range(hoje.year - 1, hoje.year + 2)),
+    }
+    return render(request, "core/contas_pagar.html", context)
+
+
+@somente_operacao
+def debitos_congelados_list(request):
+    debitos = DebitoCongelado.objects.filter(negociado=False)
+    negociados = DebitoCongelado.objects.filter(negociado=True).select_related("conta_pagar_gerada")
+    total_congelado = sum((d.valor for d in debitos), 0)
+    return render(request, "core/debitos_congelados.html", {
+        "debitos": debitos, "negociados": negociados, "total_congelado": total_congelado,
+    })
+
+
+@somente_operacao
+def debito_congelado_create(request):
+    if request.method == "POST":
+        form = DebitoCongeladoForm(request.POST)
+        if form.is_valid():
+            debito = form.save(commit=False)
+            debito.criado_por = request.user
+            debito.save()
+            messages.success(request, "Débito congelado cadastrado — não entra no somatório do mês até ser negociado.")
+            return redirect("debitos_congelados")
+    else:
+        form = DebitoCongeladoForm()
+    return render(request, "core/debito_congelado_form.html", {"form": form})
+
+
+@somente_operacao
+def debito_congelado_negociar(request, pk):
+    debito = get_object_or_404(DebitoCongelado, pk=pk, negociado=False)
+    if request.method == "POST":
+        form = NegociarDebitoForm(request.POST)
+        if form.is_valid():
+            valor_parcela = form.cleaned_data["valor_parcela"]
+            parcelas = form.cleaned_data["parcelas"]
+            primeiro_venc = form.cleaned_data["primeiro_vencimento"]
+            forma = form.cleaned_data["forma_pagamento"]
+
+            conta = ContaPagar.objects.create(
+                descricao=f"{debito.descricao} (negociado)", valor=valor_parcela, vencimento=primeiro_venc,
+                status="pendente", recorrente=False, forma_pagamento=forma,
+                parcela_atual=1, total_parcelas=parcelas if forma != "avista" else 1,
+            )
+            debito.negociado = True
+            debito.negociado_em = timezone.now()
+            debito.conta_pagar_gerada = conta
+            debito.save()
+            messages.success(
+                request,
+                f"Débito \"{debito.descricao}\" negociado — já entrou em Contas a Pagar, começando em "
+                f"{primeiro_venc.strftime('%d/%m/%Y')}.",
+            )
+            return redirect("debitos_congelados")
+    else:
+        form = NegociarDebitoForm(initial={"valor_parcela": debito.valor, "parcelas": 1})
+    return render(request, "core/debito_congelado_negociar.html", {"form": form, "debito": debito})
+
+
+@somente_operacao
+def debito_congelado_delete(request, pk):
+    debito = get_object_or_404(DebitoCongelado, pk=pk)
+    if request.method == "POST":
+        descricao = debito.descricao
+        debito.delete()
+        messages.success(request, f"Débito \"{descricao}\" excluído.")
+        return redirect("debitos_congelados")
+    return render(request, "core/debito_congelado_confirm_delete.html", {"debito": debito})
+
 
 @somente_operacao
 def financeiro(request):
@@ -755,7 +847,7 @@ def conta_pagar_create(request):
             conta.save()
 
             messages.success(request, "Conta a pagar cadastrada com sucesso!")
-            return _redirect_financeiro(request)
+            return _redirect_contas_pagar(request)
     else:
         form = ContaPagarForm()
     return render(request, "core/conta_pagar_form.html", {
@@ -771,7 +863,7 @@ def conta_pagar_update(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, "Conta a pagar atualizada!")
-            return _redirect_financeiro(request)
+            return _redirect_contas_pagar(request)
     else:
         form = ContaPagarForm(instance=conta)
     return render(request, "core/conta_pagar_form.html", {
@@ -793,7 +885,7 @@ def conta_pagar_delete(request, pk):
         else:
             conta.delete()
             messages.success(request, f"Conta \"{descricao}\" excluída.")
-        return _redirect_financeiro(request)
+        return _redirect_contas_pagar(request)
     return render(request, "core/conta_pagar_confirm_delete.html", {
         "conta": conta, "mes": request.GET.get("mes"), "ano": request.GET.get("ano"),
     })
@@ -805,7 +897,7 @@ def conta_pagar_marcar_pago(request, pk):
     conta.status = "pago"
     conta.save()
     messages.success(request, f"Conta \"{conta.descricao}\" marcada como paga.")
-    return _redirect_financeiro(request)
+    return _redirect_contas_pagar(request)
 
 
 @somente_operacao
@@ -814,7 +906,7 @@ def conta_pagar_desmarcar_pago(request, pk):
     conta.status = "pendente"
     conta.save()
     messages.success(request, f"Pagamento de \"{conta.descricao}\" desfeito — voltou para Pendente.")
-    return _redirect_financeiro(request)
+    return _redirect_contas_pagar(request)
 
 
 @somente_operacao

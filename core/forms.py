@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import Permission
-from .models import Cliente, Chamado, ContaPagar, CTO, Plano
+from .models import Cliente, Chamado, ContaPagar, CTO, Plano, DebitoCongelado
 from .utils import rotulo_permissao
 from accounts.models import User
 
@@ -159,3 +159,32 @@ class UsuarioUpdateForm(BootstrapFormMixin, forms.ModelForm):
             usuario.save()
             usuario.user_permissions.set(self.cleaned_data.get("permissoes_extra", []))
         return usuario
+
+
+class DebitoCongeladoForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = DebitoCongelado
+        fields = ["descricao", "valor", "data_origem", "observacoes"]
+        labels = {"data_origem": "De quando é essa dívida (opcional)"}
+        widgets = {
+            "data_origem": forms.DateInput(attrs={"type": "date"}),
+            "observacoes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.aplicar_estilo()
+
+
+class NegociarDebitoForm(BootstrapFormMixin, forms.Form):
+    valor_parcela = forms.DecimalField(label="Valor de cada parcela", max_digits=10, decimal_places=2)
+    parcelas = forms.IntegerField(label="Em quantas vezes", min_value=1, initial=1)
+    primeiro_vencimento = forms.DateField(label="1º vencimento", widget=forms.DateInput(attrs={"type": "date"}))
+    forma_pagamento = forms.ChoiceField(
+        label="Forma de pagamento",
+        choices=[("boleto", "Boleto"), ("cartao", "Cartão"), ("avista", "À vista, em uma vez só")],
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.aplicar_estilo()
