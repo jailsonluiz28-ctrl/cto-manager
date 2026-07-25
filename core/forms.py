@@ -93,9 +93,15 @@ class ChamadoForm(BootstrapFormMixin, forms.ModelForm):
 
 
 class ContaPagarForm(BootstrapFormMixin, forms.ModelForm):
+    parcelas = forms.IntegerField(
+        label="Número de parcelas", min_value=1, initial=1, required=False,
+        help_text="Só usado se a forma de pagamento for Boleto ou Cartão parcelado.",
+    )
+
     class Meta:
         model = ContaPagar
-        fields = ["descricao", "vencimento", "valor", "status"]
+        fields = ["descricao", "valor", "vencimento", "status", "recorrente", "forma_pagamento"]
+        labels = {"valor": "Valor (de cada parcela, se for parcelado)", "vencimento": "Vencimento (1º vencimento, se parcelado)"}
         widgets = {"vencimento": forms.DateInput(attrs={"type": "date"})}
 
     def __init__(self, *args, **kwargs):

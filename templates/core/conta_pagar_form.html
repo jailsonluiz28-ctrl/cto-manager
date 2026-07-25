@@ -1,16 +1,44 @@
 {% extends "base.html" %}
-{% block titulo %}Nova conta a pagar{% endblock %}
+{% block titulo %}{% if object %}Editar Conta a Pagar{% else %}Nova Conta a Pagar{% endif %}{% endblock %}
 {% block conteudo %}
-<div class="card p-4" style="max-width:500px;">
+<div class="card p-4" style="max-width:520px;">
   <form method="post">
     {% csrf_token %}
+    <input type="hidden" name="mes" value="{{ mes }}">
+    <input type="hidden" name="ano" value="{{ ano }}">
     {% for field in form %}
-    <div class="mb-3"><label class="form-label small">{{ field.label }}</label>{{ field }}</div>
+    <div class="mb-3">
+      {% if field.name == "recorrente" %}
+        <div class="form-check">{{ field }}<label class="form-check-label small ms-1">{{ field.label }}</label></div>
+      {% else %}
+        <label class="form-label small">{{ field.label }}</label>{{ field }}
+        {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+      {% endif %}
+    </div>
     {% endfor %}
     <div class="d-flex gap-2 justify-content-end">
-      <a href="{% url 'financeiro' %}" class="btn btn-outline-secondary">Cancelar</a>
+      <a href="{% url 'financeiro' %}?mes={{ mes }}&ano={{ ano }}#pagar" class="btn btn-outline-secondary">Cancelar</a>
       <button class="btn btn-primary" type="submit">Salvar</button>
     </div>
   </form>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const recorrente = document.getElementById("id_recorrente");
+  const forma = document.getElementById("id_forma_pagamento");
+  const parcelasWrap = document.getElementById("id_parcelas") ? document.getElementById("id_parcelas").closest(".mb-3") : null;
+
+  function atualizar() {
+    if (!parcelasWrap) return;
+    const mostrar = !recorrente.checked && forma.value !== "avista";
+    parcelasWrap.style.display = mostrar ? "" : "none";
+  }
+  if (recorrente && forma) {
+    recorrente.addEventListener("change", atualizar);
+    forma.addEventListener("change", atualizar);
+    atualizar();
+  }
+});
+</script>
 {% endblock %}

@@ -2,7 +2,7 @@ from datetime import date, timedelta
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
-from core.models import Plano, CTO, Cliente, Chamado, ContaPagar
+from core.models import Plano, CTO, Cliente, Chamado, ContaPagar, Pagamento
 
 User = get_user_model()
 
@@ -129,8 +129,23 @@ class Command(BaseCommand):
         ]
         for descricao, dia, valor in contas:
             ContaPagar.objects.get_or_create(
-                descricao=descricao, defaults={"vencimento": date.today().replace(day=min(dia, 28)), "valor": valor}
+                descricao=descricao,
+                defaults={"vencimento": date.today().replace(day=min(dia, 28)), "valor": valor, "recorrente": True},
             )
+
+        # Pagamentos de exemplo dos últimos meses (pra alimentar o Fluxo de Caixa)
+        hoje = date.today().replace(day=1)
+        for i in range(6):
+            ano = hoje.year + ((hoje.month - i - 1) // 12)
+            mes = ((hoje.month - i - 1) % 12) + 1
+            ref = hoje.replace(year=ano, month=mes)
+            for cliente in clientes[: max(1, len(clientes) - i)]:
+                if cliente.status == "inadimplente" and i == 0:
+                    continue
+                Pagamento.objects.get_or_create(
+                    cliente=cliente, mes_referencia=ref,
+                    defaults={"valor": cliente.valor_mensal(), "data_pagamento": ref, "registrado_por": None},
+                )
 
         self.stdout.write(self.style.SUCCESS("Dados de exemplo criados com sucesso!"))
         self.stdout.write("Logins de teste:")

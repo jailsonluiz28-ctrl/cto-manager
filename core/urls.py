@@ -9,6 +9,8 @@ urlpatterns = [
     path("clientes/novo/", views.ClienteCreateView.as_view(), name="cliente_create"),
     path("clientes/<int:pk>/editar/", views.ClienteUpdateView.as_view(), name="cliente_update"),
     path("clientes/<int:pk>/excluir/", views.cliente_delete, name="cliente_delete"),
+    path("clientes/<int:pk>/cancelar/", views.cliente_cancelar, name="cliente_cancelar"),
+    path("clientes/cancelados/", views.ClienteCanceladosListView.as_view(), name="cliente_cancelados"),
     path("clientes/exportar/excel/", views.cliente_export_excel, name="cliente_export_excel"),
     path("clientes/exportar/pdf/", views.cliente_export_pdf, name="cliente_export_pdf"),
 
@@ -40,6 +42,13 @@ urlpatterns = [
 
     path("financeiro/", views.financeiro, name="financeiro"),
     path("financeiro/contas-pagar/nova/", views.conta_pagar_create, name="conta_pagar_create"),
+    path("financeiro/contas-pagar/<int:pk>/editar/", views.conta_pagar_update, name="conta_pagar_update"),
+    path("financeiro/contas-pagar/<int:pk>/excluir/", views.conta_pagar_delete, name="conta_pagar_delete"),
+    path("financeiro/contas-pagar/<int:pk>/pagar/", views.conta_pagar_marcar_pago, name="conta_pagar_marcar_pago"),
+    path("financeiro/contas-pagar/<int:pk>/desfazer/", views.conta_pagar_desmarcar_pago, name="conta_pagar_desmarcar_pago"),
+    path("financeiro/clientes/<int:pk>/pagar/", views.registrar_pagamento, name="registrar_pagamento"),
+    path("financeiro/exportar/excel/", views.financeiro_export_excel, name="financeiro_export_excel"),
+    path("financeiro/exportar/pdf/", views.financeiro_export_pdf, name="financeiro_export_pdf"),
 
     path("relatorios/tecnicos/", views.relatorio_tecnicos, name="relatorio_tecnicos"),
 

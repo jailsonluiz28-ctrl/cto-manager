@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class Plano(models.Model):
@@ -60,6 +61,7 @@ class Cliente(models.Model):
         ("ativo", "Ativo em Dia"),
         ("inadimplente", "Inadimplente"),
         ("suspenso", "Suspenso"),
+        ("cancelado", "Cancelado"),
         ("inativo", "Inativo"),
     ]
     TIPO_PESSOA_CHOICES = [("fisica", "Pessoa Física"), ("juridica", "Pessoa Jurídica")]
@@ -101,6 +103,9 @@ class Cliente(models.Model):
 
     observacoes = models.TextField(blank=True)
 
+    motivo_cancelamento = models.TextField(blank=True)
+    data_cancelamento = models.DateField(null=True, blank=True)
+
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -108,6 +113,10 @@ class Cliente(models.Model):
 
     def valor_mensal(self):
         return self.plano.valor_mensal if self.plano else 0
+
+    def pago_mes_atual(self):
+        primeiro_dia = timezone.now().date().replace(day=1)
+        return self.pagamentos.filter(mes_referencia=primeiro_dia).exists()
 
     def endereco_completo(self):
         linha1 = ", ".join(p for p in [self.logradouro, self.numero] if p)
@@ -195,12 +204,74 @@ class ChamadoAnexo(models.Model):
         return f"Anexo do chamado #{self.chamado_id}"
 
 
+class MovimentacaoReceita(models.Model):
+    TIPO_CHOICES = [
+        ("novo_cliente", "Novo cliente"),
+        ("cancelamento", "Cancelamento"),
+        ("upgrade", "Upgrade de plano"),
+        ("downgrade", "Downgrade de plano"),
+    ]
+    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name="movimentacoes_receita")
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
+    valor_anterior = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    valor_novo = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True
+    )
+
+    class Meta:
+        ordering = ["-criado_em"]
+        verbose_name = "Movimentação de receita"
+        verbose_name_plural = "Movimentações de receita"
+
+    def diferenca(self):
+        return self.valor_novo - self.valor_anterior
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} - {self.cliente.nome}"
+
+
+class Pagamento(models.Model):
+    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name="pagamentos")
+    valor = models.DecimalField(max_digits=8, decimal_places=2)
+    mes_referencia = models.DateField(help_text="Dia 1 do mês a que esse pagamento se refere")
+    data_pagamento = models.DateField()
+    registrado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-mes_referencia"]
+        unique_together = ("cliente", "mes_referencia")
+        verbose_name = "Pagamento"
+        verbose_name_plural = "Pagamentos"
+
+    def __str__(self):
+        return f"{self.cliente.nome} - {self.mes_referencia.strftime('%m/%Y')}"
+
+
 class ContaPagar(models.Model):
     STATUS_CHOICES = [("pendente", "Pendente"), ("agendado", "Agendado"), ("pago", "Pago")]
+    FORMA_PAGAMENTO_CHOICES = [
+        ("avista", "À vista"),
+        ("boleto", "Boleto parcelado"),
+        ("cartao", "Cartão parcelado"),
+    ]
     descricao = models.CharField(max_length=200)
     vencimento = models.DateField()
     valor = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pendente")
+
+    recorrente = models.BooleanField("Débito fixo (repete todo mês)", default=False)
+    gerada_de = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.SET_NULL, related_name="proximas"
+    )
+
+    forma_pagamento = models.CharField(max_length=20, choices=FORMA_PAGAMENTO_CHOICES, default="avista")
+    parcela_atual = models.PositiveIntegerField(default=1)
+    total_parcelas = models.PositiveIntegerField(default=1)
 
     class Meta:
         ordering = ["vencimento"]

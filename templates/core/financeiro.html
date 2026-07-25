@@ -1,37 +1,172 @@
 {% extends "base.html" %}
 {% block titulo %}Financeiro{% endblock %}
 {% block conteudo %}
+
+<form class="d-flex gap-2 mb-3" method="get" id="form-mes">
+  <select name="mes" class="form-select" style="max-width:160px;" onchange="document.getElementById('form-mes').submit()">
+    {% for valor, rotulo in meses_opcoes %}<option value="{{ valor }}" {% if valor == mes %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+  </select>
+  <select name="ano" class="form-select" style="max-width:120px;" onchange="document.getElementById('form-mes').submit()">
+    {% for a in anos_opcoes %}<option value="{{ a }}" {% if a == ano %}selected{% endif %}>{{ a }}</option>{% endfor %}
+  </select>
+</form>
+
 <div class="row g-3 mb-4">
-  <div class="col-md-3 col-6"><div class="kpi-card" style="background:#2563eb;"><div class="rotulo">A receber (mês)</div><div class="valor">R$ {{ a_receber|floatformat:2 }}</div></div></div>
-  <div class="col-md-3 col-6"><div class="kpi-card" style="background:#d97706;"><div class="rotulo">A pagar (mês)</div><div class="valor">R$ {{ total_pagar|floatformat:2 }}</div></div></div>
-  <div class="col-md-3 col-6"><div class="kpi-card" style="background:#dc2626;"><div class="rotulo">Inadimplência</div><div class="valor">R$ {{ total_inadimplencia|floatformat:2 }}</div></div></div>
-  <div class="col-md-3 col-6"><div class="kpi-card" style="background:#059669;"><div class="rotulo">Inadimplentes</div><div class="valor">{{ inadimplentes|length }}</div></div></div>
+  <div class="col-md-3 col-6">
+    <div class="kpi-card" style="background:#2563eb;">
+      <div class="rotulo">Esperado em {{ mes_ref|date:"F/Y" }}</div>
+      <div class="valor">R$ {{ esperado_mes|floatformat:2 }}</div>
+      <div class="small mt-1" style="opacity:.9;">{{ total_clientes_mes }} clientes</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="kpi-card" style="background:#059669;">
+      <div class="rotulo">Já recebido de {{ mes_ref|date:"F/Y" }}</div>
+      <div class="valor">R$ {{ recebido_mes|floatformat:2 }}</div>
+      <div class="small mt-1" style="opacity:.9;">{{ pagos_count }} de {{ total_clientes_mes }} clientes pagaram</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="kpi-card" style="background:#dc2626;">
+      <div class="rotulo">Falta receber de {{ mes_ref|date:"F/Y" }}</div>
+      <div class="valor">R$ {{ falta_receber_mes|floatformat:2 }}</div>
+      <div class="small mt-1" style="opacity:.9;">{{ faltam_count }} clientes ainda não pagaram</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="kpi-card" style="background:#7c3aed;">
+      <div class="rotulo">Inadimplentes (geral)</div>
+      <div class="valor">{{ inadimplentes|length }}</div>
+    </div>
+  </div>
 </div>
 
-<ul class="nav nav-pills mb-3">
-  <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#receber">A receber</a></li>
-  <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#pagar">Contas a pagar</a></li>
-  <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#inadimplencia">Inadimplência</a></li>
-</ul>
+<div class="mb-2 d-flex align-items-center gap-2">
+  <i class="bi bi-graph-up-arrow text-primary"></i>
+  <h6 class="mb-0">Variação de receita em {{ mes_ref|date:"F/Y" }}</h6>
+</div>
+<div class="row g-3 mb-4">
+  <div class="col-md-3 col-6">
+    <div class="kpi-card" style="background:#059669;">
+      <div class="rotulo">Novos clientes</div>
+      <div class="valor">+R$ {{ receita_nova|floatformat:2 }}</div>
+      <div class="small mt-1" style="opacity:.9;">{{ novos_count }} clientes · +{{ percentual_novo|floatformat:1 }}%</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="kpi-card" style="background:#dc2626;">
+      <div class="rotulo">Cancelamentos</div>
+      <div class="valor">-R$ {{ receita_perdida|floatformat:2 }}</div>
+      <div class="small mt-1" style="opacity:.9;">{{ cancelamentos_count }} clientes · -{{ percentual_perdido|floatformat:1 }}%</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="kpi-card" style="background:#0891b2;">
+      <div class="rotulo">Upgrade/Downgrade de plano</div>
+      <div class="valor">{% if ajuste_planos >= 0 %}+{% endif %}R$ {{ ajuste_planos|floatformat:2 }}</div>
+      <div class="small mt-1" style="opacity:.9;">Diferença líquida de trocas de plano</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="kpi-card" style="background:{% if saldo_mes >= 0 %}#059669{% else %}#dc2626{% endif %};">
+      <div class="rotulo">Saldo do mês</div>
+      <div class="valor">{% if saldo_mes >= 0 %}+{% endif %}R$ {{ saldo_mes|floatformat:2 }}</div>
+      <div class="small mt-1" style="opacity:.9;">{% if saldo_mes >= 0 %}Lucro{% else %}Prejuízo{% endif %} de {{ percentual_saldo|floatformat:1 }}% sobre a receita esperada</div>
+    </div>
+  </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <ul class="nav nav-pills">
+    <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#receber">Cobrança de {{ mes_ref|date:"F/Y" }}</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#pagar">Contas a pagar</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#inadimplencia">Inadimplência</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#fluxo">Fluxo de Caixa</a></li>
+  </ul>
+  <div class="d-flex gap-2">
+    <a href="{% url 'financeiro_export_excel' %}" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+    <a href="{% url 'financeiro_export_pdf' %}" class="btn btn-outline-danger btn-sm"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+  </div>
+</div>
 
 <div class="tab-content">
   <div class="tab-pane fade show active" id="receber">
+    <p class="text-muted small">
+      Isso mostra a cobrança <strong>de {{ mes_ref|date:"F/Y" }}</strong>, não importa em que dia o cliente
+      efetivamente pagar. Se ele pagar em agosto uma cobrança de julho, continua contando pra julho.
+    </p>
     <div class="card">
-      <table class="table mb-0"><thead class="table-light"><tr><th>Cliente</th><th>Plano</th><th class="text-end">Valor</th></tr></thead>
-        <tbody>{% for c in clientes %}<tr><td>{{ c.nome }}</td><td>{{ c.plano }}</td><td class="text-end">R$ {{ c.valor_mensal|floatformat:2 }}</td></tr>{% endfor %}</tbody>
+      <table class="table mb-0 align-middle">
+        <thead class="table-light"><tr><th>Cliente</th><th>Plano</th><th>Status do cliente</th><th class="text-end">Valor</th><th class="text-end">Cobrança de {{ mes_ref|date:"F/Y" }}</th></tr></thead>
+        <tbody>
+          {% for item in clientes_status %}
+          <tr>
+            <td>{{ item.cliente.nome }}</td>
+            <td>{{ item.cliente.plano }}</td>
+            <td>
+              {% if item.cliente.status == "ativo" %}<span class="badge bg-success-subtle text-success">Ativo</span>
+              {% elif item.cliente.status == "inadimplente" %}<span class="badge bg-danger-subtle text-danger">Inadimplente</span>
+              {% else %}<span class="badge bg-warning-subtle text-warning-emphasis">{{ item.cliente.get_status_display }}</span>{% endif %}
+            </td>
+            <td class="text-end">R$ {{ item.cliente.valor_mensal|floatformat:2 }}</td>
+            <td class="text-end">
+              {% if item.pago %}
+                <span class="badge bg-success"><i class="bi bi-check-lg"></i> Pago</span>
+              {% elif item.eh_instalacao %}
+                <span class="badge bg-info text-dark" title="Cliente instalado nesse mês — só vai pagar no próximo"><i class="bi bi-tools"></i> Instalação</span>
+              {% else %}
+                <form method="post" action="{% url 'registrar_pagamento' item.cliente.pk %}" class="d-inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="mes" value="{{ mes }}">
+                  <input type="hidden" name="ano" value="{{ ano }}">
+                  <button class="btn btn-sm btn-outline-primary">Marcar como pago</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
       </table>
     </div>
   </div>
+
   <div class="tab-pane fade" id="pagar">
-    <div class="mb-2"><a href="{% url 'conta_pagar_create' %}" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> Nova conta</a></div>
+    <div class="mb-2"><a href="{% url 'conta_pagar_create' %}?mes={{ mes }}&ano={{ ano }}" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> Nova conta</a></div>
     <div class="card">
-      <table class="table mb-0"><thead class="table-light"><tr><th>Descrição</th><th>Vencimento</th><th>Status</th><th class="text-end">Valor</th></tr></thead>
-        <tbody>{% for c in contas_pagar %}<tr><td>{{ c.descricao }}</td><td>{{ c.vencimento|date:"d/m/Y" }}</td>
+      <table class="table mb-0 align-middle"><thead class="table-light"><tr><th>Descrição</th><th>Vencimento</th><th>Status</th><th class="text-end">Valor</th><th class="text-end">Ações</th></tr></thead>
+        <tbody>{% for c in contas_pagar %}<tr>
+          <td>
+            {{ c.descricao }}
+            {% if c.recorrente %}<span class="badge bg-info text-dark ms-1" title="Repete todo mês">Fixo mensal</span>{% endif %}
+            {% if c.total_parcelas > 1 %}<span class="badge bg-secondary ms-1">{{ c.parcela_atual }}/{{ c.total_parcelas }}</span>{% endif %}
+          </td>
+          <td>{{ c.vencimento|date:"d/m/Y" }}</td>
           <td>{% if c.status == "pago" %}<span class="badge bg-success">Pago</span>{% elif c.status == "agendado" %}<span class="badge bg-info text-dark">Agendado</span>{% else %}<span class="badge bg-warning text-dark">Pendente</span>{% endif %}</td>
-          <td class="text-end">R$ {{ c.valor|floatformat:2 }}</td></tr>{% endfor %}</tbody>
+          <td class="text-end">R$ {{ c.valor|floatformat:2 }}</td>
+          <td class="text-end">
+            <div class="d-flex gap-1 justify-content-end">
+              {% if c.status != "pago" %}
+              <form method="post" action="{% url 'conta_pagar_marcar_pago' c.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="mes" value="{{ mes }}"><input type="hidden" name="ano" value="{{ ano }}">
+                <button class="btn btn-sm btn-outline-success" title="Marcar como pago"><i class="bi bi-check-lg"></i></button>
+              </form>
+              {% else %}
+              <form method="post" action="{% url 'conta_pagar_desmarcar_pago' c.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="mes" value="{{ mes }}"><input type="hidden" name="ano" value="{{ ano }}">
+                <button class="btn btn-sm btn-outline-warning" title="Desfazer pagamento (marcado por engano)"><i class="bi bi-arrow-counterclockwise"></i></button>
+              </form>
+              {% endif %}
+              <a href="{% url 'conta_pagar_update' c.pk %}?mes={{ mes }}&ano={{ ano }}" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
+              <a href="{% url 'conta_pagar_delete' c.pk %}?mes={{ mes }}&ano={{ ano }}" class="btn btn-sm btn-outline-danger" title="Excluir"><i class="bi bi-trash"></i></a>
+            </div>
+          </td>
+        </tr>{% endfor %}</tbody>
       </table>
     </div>
   </div>
+
   <div class="tab-pane fade" id="inadimplencia">
     <div class="card">
       <table class="table mb-0"><thead class="table-light"><tr><th>Cliente</th><th>Telefone</th><th class="text-end">Valor em atraso</th></tr></thead>
@@ -40,5 +175,43 @@
       </table>
     </div>
   </div>
+
+  <div class="tab-pane fade" id="fluxo">
+    <div class="card p-3">
+      <h6 class="mb-3">Entradas x Saídas — últimos 6 meses (por mês de referência da cobrança)</h6>
+      <canvas id="graficoFluxo" height="90"></canvas>
+    </div>
+  </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const hash = window.location.hash;
+  if (hash) {
+    const link = document.querySelector('.nav-link[href="' + hash + '"]');
+    if (link) {
+      new bootstrap.Tab(link).show();
+    }
+  }
+
+  const ctx = document.getElementById("graficoFluxo");
+  if (!ctx) return;
+  new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: {{ meses_labels|safe }},
+      datasets: [
+        { label: "Entradas (recebido)", data: {{ entradas|safe }}, backgroundColor: "#059669" },
+        { label: "Saídas (contas)", data: {{ saidas|safe }}, backgroundColor: "#dc2626" },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: "bottom" } },
+      scales: { y: { beginAtZero: true } },
+    },
+  });
+});
+</script>
 {% endblock %}

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Plano, CTO, Cliente, Chamado, ContaPagar, ChamadoAnexo, LogAtividade
+from .models import Plano, CTO, Cliente, Chamado, ContaPagar, ChamadoAnexo, LogAtividade, Pagamento, MovimentacaoReceita
 
 
 @admin.register(Plano)
@@ -33,8 +33,20 @@ class ChamadoAdmin(admin.ModelAdmin):
 
 @admin.register(ContaPagar)
 class ContaPagarAdmin(admin.ModelAdmin):
-    list_display = ("descricao", "vencimento", "valor", "status")
-    list_filter = ("status",)
+    list_display = ("descricao", "vencimento", "valor", "status", "recorrente", "parcela_atual", "total_parcelas")
+    list_filter = ("status", "recorrente", "forma_pagamento")
+
+
+@admin.register(Pagamento)
+class PagamentoAdmin(admin.ModelAdmin):
+    list_display = ("cliente", "mes_referencia", "valor", "data_pagamento", "registrado_por")
+    list_filter = ("mes_referencia",)
+
+
+@admin.register(MovimentacaoReceita)
+class MovimentacaoReceitaAdmin(admin.ModelAdmin):
+    list_display = ("cliente", "tipo", "valor_anterior", "valor_novo", "criado_em")
+    list_filter = ("tipo",)
 
 
 @admin.register(LogAtividade)

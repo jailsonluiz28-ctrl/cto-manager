@@ -7,15 +7,10 @@
       <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
       <input type="text" name="q" value="{{ busca }}" class="form-control" placeholder="Buscar cliente por nome, CPF, telefone, bairro ou CTO...">
     </div>
-    <select name="status" class="form-select" style="max-width:180px;">
-      <option value="">Todos status</option>
-      {% for valor, rotulo in status_choices %}
-        <option value="{{ valor }}" {% if valor == status_filtro %}selected{% endif %}>{{ rotulo }}</option>
-      {% endfor %}
-    </select>
     <button class="btn btn-outline-secondary">Buscar</button>
   </form>
   <div class="d-flex gap-2">
+    <a href="{% url 'cliente_cancelados' %}" class="btn btn-outline-warning"><i class="bi bi-slash-circle"></i> Cancelados</a>
     <a href="{% url 'cliente_export_excel' %}" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel"></i> Excel</a>
     <a href="{% url 'cliente_export_pdf' %}" class="btn btn-outline-danger"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
     <a href="{% url 'cliente_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Novo cliente</a>
@@ -38,13 +33,16 @@
           {% if c.status == "ativo" %}<span class="badge bg-success">Ativo</span>
           {% elif c.status == "inadimplente" %}<span class="badge bg-danger">Inadimplente</span>
           {% elif c.status == "suspenso" %}<span class="badge bg-warning text-dark">Suspenso</span>
+          {% elif c.status == "cancelado" %}<span class="badge bg-dark">Cancelado</span>
           {% else %}<span class="badge bg-secondary">Inativo</span>{% endif %}
         </td>
         <td class="text-end">R$ {{ c.valor_mensal|floatformat:2 }}</td>
         <td class="text-end">
           <a href="{% url 'chamado_create' %}?cliente={{ c.pk }}" class="btn btn-sm btn-outline-primary" title="Abrir chamado para este cliente"><i class="bi bi-headset"></i></a>
           <a href="{% url 'cliente_update' c.pk %}" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
-          <a href="{% url 'cliente_delete' c.pk %}" class="btn btn-sm btn-outline-danger" title="Excluir"><i class="bi bi-trash"></i></a>
+          {% if c.status != "cancelado" %}
+          <a href="{% url 'cliente_cancelar' c.pk %}" class="btn btn-sm btn-outline-warning" title="Cancelar cliente"><i class="bi bi-slash-circle"></i></a>
+          {% endif %}
         </td>
       </tr>
       {% empty %}

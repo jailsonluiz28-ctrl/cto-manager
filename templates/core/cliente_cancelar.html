@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block titulo %}Cancelar cliente{% endblock %}
+{% block conteudo %}
+<div class="card p-4" style="max-width:600px;">
+  <div class="d-flex align-items-start gap-3 mb-3">
+    <i class="bi bi-slash-circle-fill text-warning fs-2"></i>
+    <div>
+      <h5 class="mb-1">Cancelar "{{ cliente.nome }}"?</h5>
+      <p class="text-muted mb-0">
+        Diferente da exclusão, o cadastro continua no sistema (na aba "Cancelados"), só muda
+        o status. Isso entra na contagem de cancelamentos do mês no Financeiro.
+      </p>
+    </div>
+  </div>
+  <form method="post">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label class="form-label small">Motivo do cancelamento <span class="text-danger">*</span></label>
+      <textarea name="motivo_cancelamento" class="form-control" rows="4" required placeholder="Por que o cliente está cancelando?"></textarea>
+    </div>
+    <div class="d-flex justify-content-end gap-2">
+      <a href="{% url 'cliente_list' %}" class="btn btn-outline-secondary">Voltar</a>
+      <button type="submit" class="btn btn-warning"><i class="bi bi-slash-circle"></i> Confirmar cancelamento</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

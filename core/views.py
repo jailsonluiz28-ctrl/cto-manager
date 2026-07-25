@@ -1,4 +1,5 @@
-from datetime import timedelta
+import json
+from datetime import date, timedelta
 
 import openpyxl
 from openpyxl.utils import get_column_letter
@@ -17,7 +18,10 @@ from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views.generic import ListView, CreateView, UpdateView, DetailView
 
-from .models import Plano, CTO, Cliente, Chamado, ContaPagar, ChamadoAnexo, LogAtividade
+from django.db import models
+from django.db.models import Sum, Q
+
+from .models import Plano, CTO, Cliente, Chamado, ContaPagar, ChamadoAnexo, LogAtividade, Pagamento, MovimentacaoReceita
 from .forms import ClienteForm, ChamadoForm, ContaPagarForm, CTOForm, PlanoForm, UsuarioCreateForm, UsuarioUpdateForm
 from .decorators import somente_operacao
 from .mixins import SomenteAdminMixin, SomenteOperacaoMixin
@@ -56,6 +60,7 @@ def dashboard(request):
         "rede_ocupada_pct": round((portas_ocupadas / total_portas) * 100, 1) if total_portas else 0,
         "clientes_recentes": clientes.select_related("plano", "cto")[:5],
         "chamados_abertos": Chamado.objects.exclude(status__in=["concluido", "cancelado"]).count(),
+        "chamados_em_atendimento": Chamado.objects.filter(status="andamento").count(),
         "inadimplentes": clientes.filter(status="inadimplente").count(),
     }
 
@@ -134,8 +139,14 @@ class ClienteCreateView(SomenteOperacaoMixin, CreateView):
     success_url = reverse_lazy("cliente_list")
 
     def form_valid(self, form):
+        response = super().form_valid(form)
+        MovimentacaoReceita.objects.create(
+            cliente=self.object, tipo="novo_cliente",
+            valor_anterior=0, valor_novo=self.object.valor_mensal(),
+            criado_por=self.request.user,
+        )
         messages.success(self.request, "Cliente cadastrado com sucesso!")
-        return super().form_valid(form)
+        return response
 
 
 class ClienteUpdateView(SomenteOperacaoMixin, UpdateView):
@@ -145,8 +156,22 @@ class ClienteUpdateView(SomenteOperacaoMixin, UpdateView):
     success_url = reverse_lazy("cliente_list")
 
     def form_valid(self, form):
+        cliente_antigo = Cliente.objects.get(pk=self.object.pk)
+        valor_antigo = cliente_antigo.valor_mensal()
+        plano_antigo_id = cliente_antigo.plano_id
+
+        response = super().form_valid(form)
+
+        valor_novo = self.object.valor_mensal()
+        if self.object.plano_id != plano_antigo_id and valor_novo != valor_antigo:
+            tipo = "upgrade" if valor_novo > valor_antigo else "downgrade"
+            MovimentacaoReceita.objects.create(
+                cliente=self.object, tipo=tipo,
+                valor_anterior=valor_antigo, valor_novo=valor_novo,
+                criado_por=self.request.user,
+            )
         messages.success(self.request, "Dados do cliente atualizados!")
-        return super().form_valid(form)
+        return response
 
 
 @user_passes_test(lambda u: u.is_authenticated and u.role in ("admin", "operador"))
@@ -173,6 +198,40 @@ def cto_portas_livres(request, pk):
         except Cliente.DoesNotExist:
             pass
     return JsonResponse({"portas": livres})
+
+
+@user_passes_test(lambda u: u.is_authenticated and u.role in ("admin", "operador"))
+def cliente_cancelar(request, pk):
+    cliente = get_object_or_404(Cliente, pk=pk)
+    if request.method == "POST":
+        motivo = request.POST.get("motivo_cancelamento", "").strip()
+        if not motivo:
+            messages.error(request, "É obrigatório informar o motivo do cancelamento.")
+            return redirect("cliente_cancelar", pk=pk)
+
+        valor_anterior = cliente.valor_mensal()
+        cliente.status = "cancelado"
+        cliente.motivo_cancelamento = motivo
+        cliente.data_cancelamento = timezone.now().date()
+        cliente.save()
+
+        MovimentacaoReceita.objects.create(
+            cliente=cliente, tipo="cancelamento",
+            valor_anterior=valor_anterior, valor_novo=0,
+            criado_por=request.user,
+        )
+        messages.success(request, f"Cliente \"{cliente.nome}\" marcado como cancelado.")
+        return redirect("cliente_list")
+    return render(request, "core/cliente_cancelar.html", {"cliente": cliente})
+
+
+class ClienteCanceladosListView(SomenteOperacaoMixin, ListView):
+    model = Cliente
+    template_name = "core/cliente_cancelados.html"
+    context_object_name = "clientes"
+
+    def get_queryset(self):
+        return Cliente.objects.filter(status="cancelado").select_related("plano", "cto").order_by("-data_cancelamento")
 
 
 # ---------------------------------------------------------------------------
@@ -519,28 +578,164 @@ def finalizar_chamado(request, pk):
     return render(request, "core/chamado_finalizar.html", {"chamado": chamado})
 
 
+def garantir_contas_recorrentes(ano_alvo, mes_alvo):
+    """Garante que as contas fixas e parceladas já tenham uma cópia criada até o mês
+    que está sendo visualizado na tela (não só até a data real de hoje)."""
+    alvo = date(ano_alvo, mes_alvo, 1)
+    raizes = ContaPagar.objects.filter(gerada_de__isnull=True).filter(Q(recorrente=True) | Q(total_parcelas__gt=1))
+
+    for raiz in raizes:
+        serie = list(ContaPagar.objects.filter(Q(pk=raiz.pk) | Q(gerada_de=raiz)).order_by("vencimento"))
+        ultima = serie[-1]
+        quantidade_existente = len(serie)
+        seguranca = 0
+
+        while ultima.vencimento.replace(day=1) < alvo and seguranca < 36:
+            if not raiz.recorrente and quantidade_existente >= raiz.total_parcelas:
+                break  # já geramos todas as parcelas dessa série, não cria mais
+
+            mes_p = ultima.vencimento.month % 12 + 1
+            ano_p = ultima.vencimento.year + (1 if ultima.vencimento.month == 12 else 0)
+            dia_p = min(ultima.vencimento.day, 28)
+            nova_data = date(ano_p, mes_p, dia_p)
+
+            ultima = ContaPagar.objects.create(
+                descricao=raiz.descricao, valor=ultima.valor, vencimento=nova_data,
+                status="pendente", recorrente=raiz.recorrente, forma_pagamento=raiz.forma_pagamento,
+                parcela_atual=(quantidade_existente + 1) if not raiz.recorrente else 1,
+                total_parcelas=raiz.total_parcelas,
+                gerada_de=raiz,
+            )
+            quantidade_existente += 1
+            seguranca += 1
+
+
+def _redirect_financeiro(request, aba="pagar"):
+    mes = request.POST.get("mes") or request.GET.get("mes")
+    ano = request.POST.get("ano") or request.GET.get("ano")
+    url = "/financeiro/"
+    if mes and ano:
+        url += f"?mes={mes}&ano={ano}"
+    return redirect(url + f"#{aba}")
+
+
 # ---------------------------------------------------------------------------
 # FINANCEIRO (admin + operador)
 # ---------------------------------------------------------------------------
 
 @somente_operacao
 def financeiro(request):
+    hoje = timezone.now().date()
+    ano = int(request.GET.get("ano", hoje.year))
+    mes = int(request.GET.get("mes", hoje.month))
+    mes_ref = date(ano, mes, 1)
+
+    garantir_contas_recorrentes(ano, mes)
+
     clientes = Cliente.objects.exclude(status="inativo").select_related("plano")
-    a_receber = sum((c.valor_mensal() for c in clientes), 0)
+    esperado_mes = sum((c.valor_mensal() for c in clientes), 0)
+
+    pagamentos_mes = Pagamento.objects.filter(mes_referencia=mes_ref)
+    ids_pagos = set(pagamentos_mes.values_list("cliente_id", flat=True))
+    recebido_mes = pagamentos_mes.aggregate(total=Sum("valor"))["total"] or 0
+    falta_receber_mes = esperado_mes - recebido_mes
+
+    clientes_status = []
+    for c in clientes:
+        eh_instalacao = (
+            c.data_ativacao and c.data_ativacao.year == ano and c.data_ativacao.month == mes
+        )
+        clientes_status.append({"cliente": c, "pago": c.id in ids_pagos, "eh_instalacao": eh_instalacao and c.id not in ids_pagos})
+
+    total_clientes_mes = clientes.count()
+    pagos_count = len(ids_pagos)
+    faltam_count = total_clientes_mes - pagos_count
+
     inadimplentes = clientes.filter(status="inadimplente")
     total_inadimplencia = sum((c.valor_mensal() for c in inadimplentes), 0)
-    contas_pagar = ContaPagar.objects.all()
+    contas_pagar = ContaPagar.objects.filter(vencimento__year=ano, vencimento__month=mes)
     total_pagar = sum((c.valor for c in contas_pagar.exclude(status="pago")), 0)
 
+    # Movimentação de receita do mês selecionado: quem entrou, quem cancelou, quem trocou de plano
+    movs_mes = MovimentacaoReceita.objects.filter(criado_em__year=ano, criado_em__month=mes).select_related("cliente")
+    novos = movs_mes.filter(tipo="novo_cliente")
+    cancelamentos = movs_mes.filter(tipo="cancelamento")
+    upgrades = movs_mes.filter(tipo="upgrade")
+    downgrades = movs_mes.filter(tipo="downgrade")
+
+    receita_nova = sum((m.valor_novo for m in novos), 0)
+    receita_perdida = sum((m.valor_anterior for m in cancelamentos), 0)
+    ajuste_planos = sum((m.diferenca() for m in upgrades), 0) + sum((m.diferenca() for m in downgrades), 0)
+    saldo_mes = receita_nova - receita_perdida + ajuste_planos
+    percentual_saldo = (saldo_mes / esperado_mes * 100) if esperado_mes else 0
+    percentual_perdido = (receita_perdida / esperado_mes * 100) if esperado_mes else 0
+    percentual_novo = (receita_nova / esperado_mes * 100) if esperado_mes else 0
+
+    # Fluxo de caixa dos últimos 6 meses: entradas (pagamentos) x saídas (contas)
+    base_mes = hoje.replace(day=1)
+    meses_labels, entradas, saidas = [], [], []
+    for i in range(5, -1, -1):
+        ano_i = base_mes.year + ((base_mes.month - i - 1) // 12)
+        mes_i = ((base_mes.month - i - 1) % 12) + 1
+        ref = base_mes.replace(year=ano_i, month=mes_i)
+        entrada_mes = Pagamento.objects.filter(mes_referencia=ref).aggregate(total=Sum("valor"))["total"] or 0
+        saida_mes = ContaPagar.objects.filter(vencimento__year=ref.year, vencimento__month=ref.month).aggregate(
+            total=Sum("valor")
+        )["total"] or 0
+        meses_labels.append(MESES_PT[mes_i][:3])
+        entradas.append(float(entrada_mes))
+        saidas.append(float(saida_mes))
+
     context = {
-        "clientes": clientes,
-        "a_receber": a_receber,
+        "clientes_status": clientes_status,
+        "mes_ref": mes_ref,
+        "mes": mes,
+        "ano": ano,
+        "meses_opcoes": [(i, MESES_PT[i]) for i in range(1, 13)],
+        "anos_opcoes": list(range(hoje.year - 1, hoje.year + 2)),
+        "esperado_mes": esperado_mes,
+        "recebido_mes": recebido_mes,
+        "falta_receber_mes": falta_receber_mes,
+        "total_clientes_mes": total_clientes_mes,
+        "pagos_count": pagos_count,
+        "faltam_count": faltam_count,
         "inadimplentes": inadimplentes,
         "total_inadimplencia": total_inadimplencia,
         "contas_pagar": contas_pagar,
         "total_pagar": total_pagar,
+        "meses_labels": json.dumps(meses_labels),
+        "entradas": json.dumps(entradas),
+        "saidas": json.dumps(saidas),
+        "novos_count": novos.count(),
+        "cancelamentos_count": cancelamentos.count(),
+        "receita_nova": receita_nova,
+        "receita_perdida": receita_perdida,
+        "ajuste_planos": ajuste_planos,
+        "saldo_mes": saldo_mes,
+        "percentual_saldo": percentual_saldo,
+        "percentual_perdido": percentual_perdido,
+        "percentual_novo": percentual_novo,
     }
     return render(request, "core/financeiro.html", context)
+
+
+@somente_operacao
+def registrar_pagamento(request, pk):
+    cliente = get_object_or_404(Cliente, pk=pk)
+    hoje = timezone.now().date()
+    ano = int(request.POST.get("ano", hoje.year))
+    mes = int(request.POST.get("mes", hoje.month))
+    mes_ref = date(ano, mes, 1)
+
+    Pagamento.objects.update_or_create(
+        cliente=cliente, mes_referencia=mes_ref,
+        defaults={"valor": cliente.valor_mensal(), "data_pagamento": hoje, "registrado_por": request.user},
+    )
+    if cliente.status == "inadimplente":
+        cliente.status = "ativo"
+        cliente.save()
+    messages.success(request, f"Pagamento de {cliente.nome} registrado para {MESES_PT[mes]}/{ano}.")
+    return redirect(f"/financeiro/?mes={mes}&ano={ano}")
 
 
 @somente_operacao
@@ -548,11 +743,144 @@ def conta_pagar_create(request):
     if request.method == "POST":
         form = ContaPagarForm(request.POST)
         if form.is_valid():
-            form.save()
-            return redirect("financeiro")
+            conta = form.save(commit=False)
+            parcelas = form.cleaned_data.get("parcelas") or 1
+
+            if not conta.recorrente and conta.forma_pagamento in ("boleto", "cartao") and parcelas > 1:
+                conta.total_parcelas = parcelas
+                conta.parcela_atual = 1
+            else:
+                conta.total_parcelas = 1
+                conta.parcela_atual = 1
+            conta.save()
+
+            messages.success(request, "Conta a pagar cadastrada com sucesso!")
+            return _redirect_financeiro(request)
     else:
         form = ContaPagarForm()
-    return render(request, "core/conta_pagar_form.html", {"form": form})
+    return render(request, "core/conta_pagar_form.html", {
+        "form": form, "mes": request.GET.get("mes"), "ano": request.GET.get("ano"),
+    })
+
+
+@somente_operacao
+def conta_pagar_update(request, pk):
+    conta = get_object_or_404(ContaPagar, pk=pk)
+    if request.method == "POST":
+        form = ContaPagarForm(request.POST, instance=conta)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Conta a pagar atualizada!")
+            return _redirect_financeiro(request)
+    else:
+        form = ContaPagarForm(instance=conta)
+    return render(request, "core/conta_pagar_form.html", {
+        "form": form, "object": conta, "mes": request.GET.get("mes"), "ano": request.GET.get("ano"),
+    })
+
+
+@somente_operacao
+def conta_pagar_delete(request, pk):
+    conta = get_object_or_404(ContaPagar, pk=pk)
+    if request.method == "POST":
+        descricao = conta.descricao
+        if conta.recorrente or conta.total_parcelas > 1:
+            raiz = conta.gerada_de or conta
+            serie = ContaPagar.objects.filter(Q(pk=raiz.pk) | Q(gerada_de=raiz))
+            qtd = serie.count()
+            serie.delete()
+            messages.success(request, f"\"{descricao}\" excluída — {qtd} ocorrência(s) removida(s) (a série inteira, não só esse mês).")
+        else:
+            conta.delete()
+            messages.success(request, f"Conta \"{descricao}\" excluída.")
+        return _redirect_financeiro(request)
+    return render(request, "core/conta_pagar_confirm_delete.html", {
+        "conta": conta, "mes": request.GET.get("mes"), "ano": request.GET.get("ano"),
+    })
+
+
+@somente_operacao
+def conta_pagar_marcar_pago(request, pk):
+    conta = get_object_or_404(ContaPagar, pk=pk)
+    conta.status = "pago"
+    conta.save()
+    messages.success(request, f"Conta \"{conta.descricao}\" marcada como paga.")
+    return _redirect_financeiro(request)
+
+
+@somente_operacao
+def conta_pagar_desmarcar_pago(request, pk):
+    conta = get_object_or_404(ContaPagar, pk=pk)
+    conta.status = "pendente"
+    conta.save()
+    messages.success(request, f"Pagamento de \"{conta.descricao}\" desfeito — voltou para Pendente.")
+    return _redirect_financeiro(request)
+
+
+@somente_operacao
+def financeiro_export_excel(request):
+    wb = openpyxl.Workbook()
+
+    ws1 = wb.active
+    ws1.title = "A Receber"
+    ws1.append(["Cliente", "Plano", "Valor", "Pago este mês?"])
+    for c in Cliente.objects.exclude(status="inativo").select_related("plano"):
+        ws1.append([c.nome, str(c.plano) if c.plano else "", float(c.valor_mensal()), "Sim" if c.pago_mes_atual() else "Não"])
+
+    ws2 = wb.create_sheet("Contas a Pagar")
+    ws2.append(["Descrição", "Vencimento", "Valor", "Status"])
+    for c in ContaPagar.objects.all():
+        ws2.append([c.descricao, c.vencimento.strftime("%d/%m/%Y"), float(c.valor), c.get_status_display()])
+
+    ws3 = wb.create_sheet("Inadimplentes")
+    ws3.append(["Cliente", "Telefone", "Valor em atraso"])
+    for c in Cliente.objects.filter(status="inadimplente"):
+        ws3.append([c.nome, c.telefone, float(c.valor_mensal())])
+
+    for ws in (ws1, ws2, ws3):
+        for i in range(1, ws.max_column + 1):
+            ws.column_dimensions[get_column_letter(i)].width = 22
+
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = 'attachment; filename="financeiro.xlsx"'
+    wb.save(response)
+    return response
+
+
+@somente_operacao
+def financeiro_export_pdf(request):
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="financeiro.pdf"'
+    doc = SimpleDocTemplate(response, pagesize=landscape(A4), topMargin=1.5 * cm, bottomMargin=1.5 * cm)
+    estilos = getSampleStyleSheet()
+    elementos = [Paragraph("Relatório Financeiro - CTO Manager Pro", estilos["Title"]), Spacer(1, 12)]
+
+    elementos.append(Paragraph("A Receber", estilos["Heading2"]))
+    dados1 = [["Cliente", "Plano", "Valor", "Pago este mês?"]]
+    for c in Cliente.objects.exclude(status="inativo").select_related("plano"):
+        dados1.append([c.nome, str(c.plano) if c.plano else "-", f"R$ {c.valor_mensal():.2f}", "Sim" if c.pago_mes_atual() else "Não"])
+    t1 = Table(dados1, repeatRows=1)
+    t1.setStyle(_estilo_tabela_pdf())
+    elementos += [t1, Spacer(1, 16)]
+
+    elementos.append(Paragraph("Contas a Pagar", estilos["Heading2"]))
+    dados2 = [["Descrição", "Vencimento", "Valor", "Status"]]
+    for c in ContaPagar.objects.all():
+        dados2.append([c.descricao, c.vencimento.strftime("%d/%m/%Y"), f"R$ {c.valor:.2f}", c.get_status_display()])
+    t2 = Table(dados2, repeatRows=1)
+    t2.setStyle(_estilo_tabela_pdf())
+    elementos += [t2, Spacer(1, 16)]
+
+    elementos.append(Paragraph("Inadimplentes", estilos["Heading2"]))
+    dados3 = [["Cliente", "Telefone", "Valor em atraso"]]
+    for c in Cliente.objects.filter(status="inadimplente"):
+        dados3.append([c.nome, c.telefone, f"R$ {c.valor_mensal():.2f}"])
+    t3 = Table(dados3, repeatRows=1)
+    t3.setStyle(_estilo_tabela_pdf())
+    elementos.append(t3)
+
+    doc.build(elementos)
+    return response
 
 
 # ---------------------------------------------------------------------------
