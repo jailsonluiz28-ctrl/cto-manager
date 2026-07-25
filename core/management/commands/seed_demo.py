@@ -2,7 +2,8 @@ from datetime import date, timedelta
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
-from core.models import Plano, CTO, Cliente, Chamado, ContaPagar, Pagamento
+from django.utils import timezone
+from core.models import Plano, CTO, Cliente, Chamado, ContaPagar, Pagamento, DebitoCongelado
 
 User = get_user_model()
 
@@ -146,6 +147,38 @@ class Command(BaseCommand):
                     cliente=cliente, mes_referencia=ref,
                     defaults={"valor": cliente.valor_mensal(), "data_pagamento": ref, "registrado_por": None},
                 )
+
+        # Débitos congelados de exemplo (pra demonstração)
+        congelados_dados = [
+            ("Fatura atrasada - fornecedor XPTO", 3200.00, date(2025, 11, 10), "Cliente antigo, aguardando negociação"),
+            ("Multa contratual - rescisão antiga", 1500.00, date(2025, 9, 5), "Aguardando definição jurídica"),
+            ("Empréstimo capital de giro", 8000.00, date(2025, 12, 1), "Negociar taxa de juros antes de parcelar"),
+        ]
+        for descricao, valor, data_origem, obs in congelados_dados:
+            DebitoCongelado.objects.get_or_create(
+                descricao=descricao, defaults={"valor": valor, "data_origem": data_origem, "observacoes": obs},
+            )
+
+        # 2 débitos já negociados de exemplo (mostra o histórico e já gera as contas a pagar)
+        negociados_dados = [
+            ("Equipamento antigo - fornecedor ABC", 2400.00, date(2025, 8, 15), 600.00, 4),
+            ("Dívida com prestador de serviço", 900.00, date(2025, 10, 1), 300.00, 3),
+        ]
+        for descricao, valor_original, data_origem, valor_parcela, parcelas in negociados_dados:
+            debito, criado = DebitoCongelado.objects.get_or_create(
+                descricao=descricao,
+                defaults={"valor": valor_original, "data_origem": data_origem, "observacoes": "Já negociado"},
+            )
+            if criado:
+                conta = ContaPagar.objects.create(
+                    descricao=f"{descricao} (negociado)", valor=valor_parcela,
+                    vencimento=date.today().replace(day=10), status="pendente",
+                    recorrente=False, forma_pagamento="boleto", parcela_atual=1, total_parcelas=parcelas,
+                )
+                debito.negociado = True
+                debito.negociado_em = timezone.now()
+                debito.conta_pagar_gerada = conta
+                debito.save()
 
         self.stdout.write(self.style.SUCCESS("Dados de exemplo criados com sucesso!"))
         self.stdout.write("Logins de teste:")
