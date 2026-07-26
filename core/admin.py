@@ -60,3 +60,9 @@ class LogAtividadeAdmin(admin.ModelAdmin):
     list_display = ("criado_em", "usuario", "acao", "detalhes")
     list_filter = ("acao",)
     readonly_fields = ("usuario", "acao", "detalhes", "criado_em")
+
+    def has_add_permission(self, request):
+        # O histórico se preenche sozinho (via signals.py) toda vez que algo
+        # é criado/editado/excluído no sistema — não faz sentido criar um
+        # registro manual aqui, então nem mostramos o botão "Adicionar".
+        return False
