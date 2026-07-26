@@ -123,6 +123,15 @@ class Cliente(models.Model):
         linha2 = " - ".join(p for p in [self.bairro, self.cidade, self.estado] if p)
         return " · ".join(p for p in [linha1, linha2] if p) or "Endereço não informado"
 
+    def telefone_digitos(self):
+        return "".join(ch for ch in (self.telefone or "") if ch.isdigit())
+
+    def telefone_whatsapp(self):
+        digitos = self.telefone_digitos()
+        if digitos and not digitos.startswith("55"):
+            digitos = "55" + digitos
+        return digitos
+
     def __str__(self):
         return self.nome
 
