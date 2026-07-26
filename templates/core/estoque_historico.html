@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block titulo %}Histórico de Movimentações do Estoque{% endblock %}
+{% block conteudo %}
+<ul class="nav nav-pills mb-3">
+  <li class="nav-item"><a class="nav-link" href="{% url 'material_list' %}">Materiais</a></li>
+  <li class="nav-item"><a class="nav-link" href="{% url 'estoque_saida' %}">Retirar Material</a></li>
+  <li class="nav-item"><a class="nav-link active" href="{% url 'estoque_historico' %}">Histórico</a></li>
+</ul>
+
+<form class="d-flex gap-2 mb-3" method="get" id="form-filtro-material">
+  <select name="material" class="form-select" style="max-width:280px;" onchange="document.getElementById('form-filtro-material').submit()">
+    <option value="">Todos os materiais</option>
+    {% for m in materiais %}<option value="{{ m.pk }}" {% if material_filtro|stringformat:"s" == m.pk|stringformat:"s" %}selected{% endif %}>{{ m.nome }}</option>{% endfor %}
+  </select>
+</form>
+
+<div class="card">
+  <table class="table mb-0 align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Data</th>
+        <th>Material</th>
+        <th>Tipo</th>
+        <th class="text-end">Quantidade</th>
+        <th>Técnico</th>
+        <th>Registrado por</th>
+        <th>Observação</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for mv in movimentacoes %}
+      <tr>
+        <td>{{ mv.criado_em|date:"d/m/Y H:i" }}</td>
+        <td>{{ mv.material.nome }}</td>
+        <td>
+          {% if mv.tipo == "entrada" %}<span class="badge bg-success">Entrada</span>
+          {% else %}<span class="badge bg-danger">Saída</span>{% endif %}
+        </td>
+        <td class="text-end">{{ mv.quantidade_exibicao }}</td>
+        <td>{% if mv.tecnico %}{{ mv.tecnico.get_full_name|default:mv.tecnico.username }}{% else %}—{% endif %}</td>
+        <td>{% if mv.registrado_por %}{{ mv.registrado_por.get_full_name|default:mv.registrado_por.username }}{% else %}—{% endif %}</td>
+        <td>{{ mv.observacao|default:"—" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="text-center text-muted py-4">Nenhuma movimentação registrada ainda.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

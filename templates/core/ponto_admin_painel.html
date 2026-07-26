@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block titulo %}Painel de Ponto{% endblock %}
+{% block conteudo %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <p class="text-muted small mb-0">Situação de hoje, {{ hoje|date:"d/m/Y" }}</p>
+  <div class="d-flex gap-2">
+    <a href="{% url 'ponto_liberar_mais_cedo' %}" class="btn btn-warning"><i class="bi bi-unlock"></i> Liberar registro</a>
+    <a href="{% url 'ponto_liberar_acesso_extra' %}" class="btn btn-danger"><i class="bi bi-arrow-repeat"></i> Chamar de volta</a>
+    <a href="{% url 'abono_criar' %}" class="btn btn-info text-dark"><i class="bi bi-file-earmark-medical"></i> Abonar dia (atestado)</a>
+    <a href="{% url 'ponto_acumulado' %}" class="btn btn-success"><i class="bi bi-clock-fill"></i> Horas Extras Acumuladas</a>
+    <a href="{% url 'ponto_relatorio' %}" class="btn btn-primary"><i class="bi bi-graph-up"></i> Relatório mensal</a>
+  </div>
+</div>
+
+<div class="card">
+  <table class="table mb-0 align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Funcionário</th><th>Perfil</th><th>Entrada</th><th>S. Almoço</th><th>V. Almoço</th><th>Saída</th>
+        <th class="text-end">Trabalhadas</th><th class="text-end">Diferença</th><th>Situação</th><th class="text-end">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in dados %}
+      <tr>
+        <td>{{ d.usuario.get_full_name|default:d.usuario.username }}</td>
+        <td><span class="badge bg-secondary">{{ d.usuario.get_role_display }}</span></td>
+        <td>{% if d.resumo.registros.entrada %}<span class="badge bg-success">{{ d.resumo.registros.entrada.data_hora|date:"H:i" }}</span>{% else %}<span class="badge bg-danger">Não bateu</span>{% endif %}</td>
+        <td>{% if d.resumo.registros.saida_almoco %}{{ d.resumo.registros.saida_almoco.data_hora|date:"H:i" }}{% else %}—{% endif %}</td>
+        <td>{% if d.resumo.registros.volta_almoco %}{{ d.resumo.registros.volta_almoco.data_hora|date:"H:i" }}{% else %}—{% endif %}</td>
+        <td>{% if d.resumo.registros.saida %}{{ d.resumo.registros.saida.data_hora|date:"H:i" }}{% else %}—{% endif %}</td>
+        <td class="text-end">{{ d.resumo.horas_trabalhadas }}h</td>
+        <td class="text-end {% if d.resumo.diferenca < 0 %}text-danger{% else %}text-success{% endif %}">{{ d.resumo.diferenca }}h</td>
+        <td>{% if d.liberacao_pendente %}<span class="badge bg-warning text-dark" title="Já foi liberado, aguardando a pessoa bater o ponto de entrada de novo">Chamado de volta</span>{% endif %}</td>
+        <td class="text-end">
+          <a href="{% url 'jornada_editar' d.usuario.pk %}" class="btn btn-sm btn-outline-secondary" title="Editar horário/jornada"><i class="bi bi-gear"></i></a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="10" class="text-center text-muted py-4">Nenhum operador ou técnico cadastrado.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block titulo %}{% if object %}Editar Material{% else %}Novo Material{% endif %}{% endblock %}
+{% block conteudo %}
+<div class="card p-4" style="max-width:500px;">
+  <form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+    <div class="mb-3">
+      <label class="form-label small">{{ field.label }}</label>
+      {{ field }}
+      {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+      {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+    </div>
+    {% endfor %}
+    <div class="d-flex gap-2 justify-content-end">
+      <a href="{% url 'material_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+      <button class="btn btn-primary" type="submit">Salvar material</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

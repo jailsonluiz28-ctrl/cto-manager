@@ -25,7 +25,10 @@
       <tr>
         <td>
           {{ c.nome }}
-          <div class="text-muted" style="font-size:11px;">{{ c.telefone }}</div>
+          <div class="text-muted" style="font-size:11px;">
+            {{ c.telefone }}
+            {% if c.telefone %}<a href="https://wa.me/{{ c.telefone_whatsapp }}" target="_blank" style="color:inherit;" title="Abrir no WhatsApp"><i class="bi bi-whatsapp text-success"></i></a>{% endif %}
+          </div>
         </td>
         <td class="text-primary">{{ c.plano|default:"—" }}</td>
         <td>{{ c.cto|default:"—" }} {% if c.porta %}· porta {{ c.porta }}{% endif %}</td>

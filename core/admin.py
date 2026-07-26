@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Plano, CTO, Cliente, Chamado, ContaPagar, ChamadoAnexo, LogAtividade, Pagamento, MovimentacaoReceita, DebitoCongelado
+from .models import Plano, CTO, Cliente, Chamado, ContaPagar, ChamadoAnexo, LogAtividade, Pagamento, MovimentacaoReceita, DebitoCongelado, Material, MovimentacaoEstoque, JornadaTrabalho, RegistroPonto, AbonoPonto, LiberacaoExtraPonto
 
 
 @admin.register(Plano)
@@ -66,3 +66,38 @@ class LogAtividadeAdmin(admin.ModelAdmin):
         # é criado/editado/excluído no sistema — não faz sentido criar um
         # registro manual aqui, então nem mostramos o botão "Adicionar".
         return False
+
+
+@admin.register(Material)
+class MaterialAdmin(admin.ModelAdmin):
+    list_display = ("nome", "categoria", "unidade_medida", "saldo_atual", "ativo")
+    list_filter = ("categoria", "ativo")
+
+
+@admin.register(MovimentacaoEstoque)
+class MovimentacaoEstoqueAdmin(admin.ModelAdmin):
+    list_display = ("material", "tipo", "quantidade", "tecnico", "registrado_por", "criado_em")
+    list_filter = ("tipo", "material")
+
+
+@admin.register(JornadaTrabalho)
+class JornadaTrabalhoAdmin(admin.ModelAdmin):
+    list_display = ("usuario", "seg_sex_entrada", "seg_sex_saida", "sabado_ativo", "sabado_entrada", "sabado_saida")
+
+
+@admin.register(RegistroPonto)
+class RegistroPontoAdmin(admin.ModelAdmin):
+    list_display = ("usuario", "tipo", "data_hora", "liberado_mais_cedo", "autorizado_por")
+    list_filter = ("tipo", "liberado_mais_cedo")
+
+
+@admin.register(AbonoPonto)
+class AbonoPontoAdmin(admin.ModelAdmin):
+    list_display = ("usuario", "data", "motivo", "registrado_por")
+    list_filter = ("data",)
+
+
+@admin.register(LiberacaoExtraPonto)
+class LiberacaoExtraPontoAdmin(admin.ModelAdmin):
+    list_display = ("usuario", "data", "usada", "autorizado_por", "criado_em")
+    list_filter = ("usada", "data")

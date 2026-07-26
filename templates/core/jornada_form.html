@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block titulo %}Jornada de {{ funcionario.get_full_name|default:funcionario.username }}{% endblock %}
+{% block conteudo %}
+<div class="card p-4" style="max-width:600px;">
+  <form method="post">
+    {% csrf_token %}
+    <h6 class="text-muted">Segunda a sexta</h6>
+    <div class="row g-2 mb-3">
+      <div class="col-6"><label class="form-label small">{{ form.seg_sex_entrada.label }}</label>{{ form.seg_sex_entrada }}</div>
+      <div class="col-6"><label class="form-label small">{{ form.seg_sex_saida_almoco.label }}</label>{{ form.seg_sex_saida_almoco }}</div>
+      <div class="col-6"><label class="form-label small">{{ form.seg_sex_volta_almoco.label }}</label>{{ form.seg_sex_volta_almoco }}</div>
+      <div class="col-6"><label class="form-label small">{{ form.seg_sex_saida.label }}</label>{{ form.seg_sex_saida }}</div>
+    </div>
+
+    <h6 class="text-muted">Sábado</h6>
+    <div class="form-check mb-2">
+      {{ form.sabado_ativo }}
+      <label class="form-check-label small" for="{{ form.sabado_ativo.id_for_label }}">{{ form.sabado_ativo.label }}</label>
+    </div>
+    <div class="row g-2 mb-3">
+      <div class="col-6"><label class="form-label small">{{ form.sabado_entrada.label }}</label>{{ form.sabado_entrada }}</div>
+      <div class="col-6"><label class="form-label small">{{ form.sabado_saida.label }}</label>{{ form.sabado_saida }}</div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label small">{{ form.tolerancia_minutos.label }}</label>
+      {{ form.tolerancia_minutos }}
+      {% if form.tolerancia_minutos.help_text %}<div class="form-text">{{ form.tolerancia_minutos.help_text }}</div>{% endif %}
+    </div>
+
+    <div class="d-flex gap-2 justify-content-end">
+      <a href="{% url 'ponto_admin_painel' %}" class="btn btn-outline-secondary">Cancelar</a>
+      <button class="btn btn-primary" type="submit">Salvar jornada</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

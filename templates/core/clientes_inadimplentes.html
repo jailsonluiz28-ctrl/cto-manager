@@ -13,7 +13,10 @@
       {% for d in dados %}
       <tr>
         <td>{{ d.cliente.nome }}</td>
-        <td>{{ d.cliente.telefone }}</td>
+        <td>
+          {{ d.cliente.telefone }}
+          {% if d.cliente.telefone %}<a href="https://wa.me/{{ d.cliente.telefone_whatsapp }}" target="_blank" style="color:inherit;" title="Abrir no WhatsApp"><i class="bi bi-whatsapp text-success ms-1"></i></a>{% endif %}
+        </td>
         <td>{{ d.cliente.plano }}</td>
         <td class="text-end">R$ {{ d.cliente.valor_mensal|floatformat:2 }}</td>
         <td class="text-end">

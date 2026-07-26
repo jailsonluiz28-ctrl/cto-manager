@@ -1,3 +1,5 @@
+from datetime import datetime, time as time_cls
+
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -337,3 +339,231 @@ class LogAtividade(models.Model):
 
     def __str__(self):
         return f"{self.acao} - {self.usuario}"
+
+
+# ---------------------------------------------------------------------------
+# ESTOQUE DE MATERIAL
+# ---------------------------------------------------------------------------
+class Material(models.Model):
+    CATEGORIA_CHOICES = [
+        ("drop", "Bobina de Drop"),
+        ("utp", "Cabo UTP"),
+        ("conector", "Conector de Campo"),
+        ("fibra", "Fibra Óptica (AS)"),
+        ("outro", "Outro"),
+    ]
+    UNIDADE_CHOICES = [
+        ("un", "Unidade"),
+        ("m", "Metros"),
+        ("cx", "Caixa"),
+        ("rolo", "Rolo"),
+    ]
+
+    nome = models.CharField(max_length=150)
+    categoria = models.CharField(max_length=20, choices=CATEGORIA_CHOICES, default="outro")
+    unidade_medida = models.CharField(max_length=10, choices=UNIDADE_CHOICES, default="un")
+    estoque_minimo = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0,
+        help_text="Avisa quando o saldo ficar igual ou abaixo deste valor (deixe 0 pra não avisar)",
+    )
+    ativo = models.BooleanField(default=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["categoria", "nome"]
+        verbose_name = "Material"
+        verbose_name_plural = "Materiais (Estoque)"
+
+    def saldo_atual(self):
+        entradas = self.movimentacoes.filter(tipo="entrada").aggregate(total=models.Sum("quantidade"))["total"] or 0
+        saidas = self.movimentacoes.filter(tipo="saida").aggregate(total=models.Sum("quantidade"))["total"] or 0
+        return entradas - saidas
+
+    def estoque_baixo(self):
+        return self.estoque_minimo > 0 and self.saldo_atual() <= self.estoque_minimo
+
+    def saldo_exibicao(self):
+        from .utils import formatar_quantidade_material
+        return formatar_quantidade_material(
+            self.saldo_atual(), self.unidade_medida, self.get_unidade_medida_display()
+        )
+
+    def __str__(self):
+        return f"{self.nome} ({self.get_unidade_medida_display()})"
+
+
+class MovimentacaoEstoque(models.Model):
+    TIPO_CHOICES = [
+        ("entrada", "Entrada (Compra)"),
+        ("saida", "Saída (Retirada)"),
+    ]
+
+    material = models.ForeignKey(Material, on_delete=models.CASCADE, related_name="movimentacoes")
+    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)
+    quantidade = models.DecimalField(max_digits=10, decimal_places=2)
+    tecnico = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="materiais_retirados", limit_choices_to={"role": "tecnico"},
+        help_text="Pra quem o material foi liberado (só faz sentido em Retirada)",
+    )
+    chamado = models.ForeignKey(
+        Chamado, on_delete=models.SET_NULL, null=True, blank=True, related_name="materiais_usados",
+        help_text="Chamado relacionado (opcional)",
+    )
+    observacao = models.CharField(max_length=255, blank=True)
+    registrado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+        verbose_name = "Movimentação de estoque"
+        verbose_name_plural = "Movimentações de estoque"
+
+    def quantidade_exibicao(self):
+        from .utils import formatar_quantidade_material
+        return formatar_quantidade_material(
+            self.quantidade, self.material.unidade_medida, self.material.get_unidade_medida_display()
+        )
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} - {self.material.nome} ({self.quantidade})"
+
+
+# ---------------------------------------------------------------------------
+# PONTO (JORNADA DE TRABALHO)
+# ---------------------------------------------------------------------------
+class JornadaTrabalho(models.Model):
+    """Horário de trabalho de cada funcionário (Operador ou Técnico). Cada um pode
+    ter um horário diferente — por isso é configurável por pessoa, não fixo no
+    código. Segunda a sexta tem 2 turnos (manhã e tarde); sábado é um turno único
+    e pode ser desligado (folga aos sábados) por pessoa."""
+
+    usuario = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="jornada"
+    )
+    seg_sex_entrada = models.TimeField("Entrada (seg a sex)", default=time_cls(8, 0))
+    seg_sex_saida_almoco = models.TimeField("Saída para almoço", default=time_cls(12, 0))
+    seg_sex_volta_almoco = models.TimeField("Volta do almoço", default=time_cls(14, 0))
+    seg_sex_saida = models.TimeField("Saída (seg a sex)", default=time_cls(18, 0))
+    sabado_ativo = models.BooleanField("Trabalha aos sábados?", default=True)
+    sabado_entrada = models.TimeField("Entrada (sábado)", default=time_cls(8, 0))
+    sabado_saida = models.TimeField("Saída (sábado)", default=time_cls(12, 0))
+    tolerancia_minutos = models.PositiveIntegerField(
+        "Tolerância (minutos)", default=10,
+        help_text="Quantos minutos de atraso ainda não contam como atraso",
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Jornada de trabalho"
+        verbose_name_plural = "Jornadas de trabalho"
+
+    def carga_horaria_dia(self, data):
+        """Devolve quantas horas essa pessoa deveria trabalhar num dia específico
+        (0 se for domingo, ou sábado com sabado_ativo=False)."""
+        dia_semana = data.weekday()  # 0=segunda ... 5=sábado, 6=domingo
+        if dia_semana == 6:
+            return 0.0
+        if dia_semana == 5:
+            if not self.sabado_ativo:
+                return 0.0
+            entrada = datetime.combine(data, self.sabado_entrada)
+            saida = datetime.combine(data, self.sabado_saida)
+            return round((saida - entrada).total_seconds() / 3600, 2)
+        manha = datetime.combine(data, self.seg_sex_saida_almoco) - datetime.combine(data, self.seg_sex_entrada)
+        tarde = datetime.combine(data, self.seg_sex_saida) - datetime.combine(data, self.seg_sex_volta_almoco)
+        return round((manha + tarde).total_seconds() / 3600, 2)
+
+    def __str__(self):
+        return f"Jornada de {self.usuario}"
+
+
+class RegistroPonto(models.Model):
+    TIPO_CHOICES = [
+        ("entrada", "Entrada"),
+        ("saida_almoco", "Saída para almoço"),
+        ("volta_almoco", "Volta do almoço"),
+        ("saida", "Saída"),
+    ]
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="registros_ponto"
+    )
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
+    data_hora = models.DateTimeField(default=timezone.now)
+    liberado_mais_cedo = models.BooleanField(
+        default=False, help_text="Marcado quando o Administrador autoriza uma saída/registro fora do horário normal"
+    )
+    eh_chamada_de_volta = models.BooleanField(
+        default=False,
+        help_text="Marcado quando essa entrada é de um 'chamado de volta' do Administrador (emergência), depois de já ter saído no dia",
+    )
+    autorizado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    observacao = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["-data_hora"]
+        verbose_name = "Registro de ponto"
+        verbose_name_plural = "Registros de ponto"
+
+    def __str__(self):
+        return f"{self.usuario} - {self.get_tipo_display()} em {self.data_hora.strftime('%d/%m/%Y %H:%M')}"
+
+
+class AbonoPonto(models.Model):
+    """Quando o Administrador abona um dia (ex: atestado médico), esse dia não
+    conta como falta/débito de horas pro funcionário."""
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="abonos_ponto"
+    )
+    data = models.DateField()
+    motivo = models.CharField(max_length=255, blank=True)
+    anexo = models.FileField(
+        "Atestado (PDF ou imagem)", upload_to="atestados/%Y/%m/", null=True, blank=True
+    )
+    registrado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("usuario", "data")
+        ordering = ["-data"]
+        verbose_name = "Abono de ponto"
+        verbose_name_plural = "Abonos de ponto"
+
+    def __str__(self):
+        return f"Abono de {self.usuario} em {self.data.strftime('%d/%m/%Y')}"
+
+
+class LiberacaoExtraPonto(models.Model):
+    """Quando o Administrador precisa chamar de volta alguém que já bateu o ponto
+    de saída (ex: emergência), ele libera aqui — a próxima vez que a pessoa entrar
+    no sistema, vai poder bater um novo ciclo de ponto (entrada -> ... -> saída)
+    mesmo já tendo saído hoje. Cada liberação vale pra um novo ciclo só; o
+    Administrador precisa liberar de novo se precisar chamar de volta outra vez."""
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="liberacoes_extra_ponto"
+    )
+    data = models.DateField(default=timezone.localdate)
+    usada = models.BooleanField(default=False)
+    motivo = models.CharField(max_length=255, blank=True)
+    autorizado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+        verbose_name = "Liberação extra de ponto"
+        verbose_name_plural = "Liberações extras de ponto"
+
+    def __str__(self):
+        status = "usada" if self.usada else "pendente"
+        return f"Liberação extra de {self.usuario} em {self.data} ({status})"

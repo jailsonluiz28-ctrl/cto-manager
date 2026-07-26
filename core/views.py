@@ -25,12 +25,12 @@ from django.views.generic import ListView, CreateView, UpdateView, DetailView
 
 from django.db.models import Sum, Q
 
-from .models import Plano, CTO, Cliente, Chamado, ContaPagar, ChamadoAnexo, LogAtividade, Pagamento, MovimentacaoReceita, DebitoCongelado
-from .forms import ClienteForm, ChamadoForm, ContaPagarForm, CTOForm, PlanoForm, UsuarioCreateForm, UsuarioUpdateForm, DebitoCongeladoForm, NegociarDebitoForm
-from .decorators import somente_operacao
+from .models import Plano, CTO, Cliente, Chamado, ContaPagar, ChamadoAnexo, LogAtividade, Pagamento, MovimentacaoReceita, DebitoCongelado, Material, MovimentacaoEstoque, JornadaTrabalho, RegistroPonto, AbonoPonto, LiberacaoExtraPonto
+from .forms import ClienteForm, ChamadoForm, ContaPagarForm, CTOForm, PlanoForm, UsuarioCreateForm, UsuarioUpdateForm, DebitoCongeladoForm, NegociarDebitoForm, MaterialForm, EntradaEstoqueForm, SaidaEstoqueForm, JornadaForm, PontoLiberarForm, AbonoForm, LiberacaoExtraForm
+from .decorators import somente_operacao, somente_admin
 from .mixins import SomenteAdminMixin, SomenteOperacaoMixin
 from django.contrib.auth.models import Group, Permission
-from .utils import normalizar, rotulo_permissao, MODELO_LABELS, ACAO_LABELS
+from .utils import normalizar, rotulo_permissao, MODELO_LABELS, ACAO_LABELS, proximo_tipo_ponto, tem_entrada_hoje, resumo_ponto_dia
 from accounts.models import User
 
 
@@ -568,6 +568,9 @@ def meus_chamados(request):
 def chamados_disponiveis(request):
     """Lista todos os chamados em aberto. Os já assumidos por um técnico aparecem
     destacados/bloqueados, para nenhum outro técnico pegar o mesmo chamado."""
+    if not tem_entrada_hoje(request.user):
+        messages.warning(request, "Você precisa bater o ponto de entrada antes de ver os chamados disponíveis.")
+        return redirect("ponto_bater")
     chamados = (
         Chamado.objects.filter(status__in=["aberto", "andamento"])
         .exclude(status="cancelado")
@@ -578,6 +581,9 @@ def chamados_disponiveis(request):
 
 @user_passes_test(_somente_tecnico)
 def pegar_chamado(request, pk):
+    if not tem_entrada_hoje(request.user):
+        messages.warning(request, "Você precisa bater o ponto de entrada antes de pegar um chamado.")
+        return redirect("ponto_bater")
     chamado = get_object_or_404(Chamado, pk=pk)
 
     ja_tem_ativo = Chamado.objects.filter(
@@ -692,7 +698,7 @@ def _serie_completa_paga(conta):
     return not serie.exclude(status="pago").exists()
 
 
-@somente_operacao
+@somente_admin
 def contas_pagas_view(request):
     resultados = []
     raizes = ContaPagar.objects.filter(gerada_de__isnull=True, recorrente=False)
@@ -713,7 +719,7 @@ def contas_pagas_view(request):
     return render(request, "core/contas_pagas.html", {"resultados": resultados})
 
 
-@somente_operacao
+@somente_admin
 def contas_pagar_view(request):
     hoje = timezone.now().date()
     ano = int(request.GET.get("ano", hoje.year))
@@ -739,7 +745,7 @@ def contas_pagar_view(request):
     return render(request, "core/contas_pagar.html", context)
 
 
-@somente_operacao
+@somente_admin
 def debitos_congelados_list(request):
     debitos = DebitoCongelado.objects.filter(negociado=False)
     negociados = DebitoCongelado.objects.filter(negociado=True).select_related("conta_pagar_gerada")
@@ -749,7 +755,7 @@ def debitos_congelados_list(request):
     })
 
 
-@somente_operacao
+@somente_admin
 def debito_congelado_create(request):
     if request.method == "POST":
         form = DebitoCongeladoForm(request.POST)
@@ -764,7 +770,7 @@ def debito_congelado_create(request):
     return render(request, "core/debito_congelado_form.html", {"form": form})
 
 
-@somente_operacao
+@somente_admin
 def debito_congelado_negociar(request, pk):
     debito = get_object_or_404(DebitoCongelado, pk=pk, negociado=False)
     if request.method == "POST":
@@ -795,7 +801,7 @@ def debito_congelado_negociar(request, pk):
     return render(request, "core/debito_congelado_negociar.html", {"form": form, "debito": debito})
 
 
-@somente_operacao
+@somente_admin
 def debito_congelado_delete(request, pk):
     debito = get_object_or_404(DebitoCongelado, pk=pk)
     if request.method == "POST":
@@ -846,7 +852,7 @@ def clientes_inadimplentes_view(request):
     return render(request, "core/clientes_inadimplentes.html", {"dados": dados})
 
 
-@somente_operacao
+@somente_admin
 def financeiro(request):
     hoje = timezone.now().date()
     ano = int(request.GET.get("ano", hoje.year))
@@ -942,7 +948,7 @@ def financeiro(request):
     return render(request, "core/financeiro.html", context)
 
 
-@somente_operacao
+@somente_admin
 def registrar_pagamento(request, pk):
     cliente = get_object_or_404(Cliente, pk=pk)
     hoje = timezone.now().date()
@@ -961,7 +967,7 @@ def registrar_pagamento(request, pk):
     return redirect(f"/financeiro/?mes={mes}&ano={ano}")
 
 
-@somente_operacao
+@somente_admin
 def conta_pagar_create(request):
     if request.method == "POST":
         form = ContaPagarForm(request.POST, request.FILES)
@@ -986,7 +992,7 @@ def conta_pagar_create(request):
     })
 
 
-@somente_operacao
+@somente_admin
 def conta_pagar_update(request, pk):
     conta = get_object_or_404(ContaPagar, pk=pk)
     if request.method == "POST":
@@ -1002,7 +1008,7 @@ def conta_pagar_update(request, pk):
     })
 
 
-@somente_operacao
+@somente_admin
 def conta_pagar_delete(request, pk):
     conta = get_object_or_404(ContaPagar, pk=pk)
     if request.method == "POST":
@@ -1022,7 +1028,7 @@ def conta_pagar_delete(request, pk):
     })
 
 
-@somente_operacao
+@somente_admin
 def conta_pagar_marcar_pago(request, pk):
     conta = get_object_or_404(ContaPagar, pk=pk)
     conta.status = "pago"
@@ -1031,7 +1037,7 @@ def conta_pagar_marcar_pago(request, pk):
     return _redirect_contas_pagar(request)
 
 
-@somente_operacao
+@somente_admin
 def conta_pagar_desmarcar_pago(request, pk):
     conta = get_object_or_404(ContaPagar, pk=pk)
     conta.status = "pendente"
@@ -1040,7 +1046,7 @@ def conta_pagar_desmarcar_pago(request, pk):
     return _redirect_contas_pagar(request)
 
 
-@somente_operacao
+@somente_admin
 def financeiro_export_excel(request):
     wb = openpyxl.Workbook()
 
@@ -1070,7 +1076,7 @@ def financeiro_export_excel(request):
     return response
 
 
-@somente_operacao
+@somente_admin
 def financeiro_export_pdf(request):
     response = HttpResponse(content_type="application/pdf")
     response["Content-Disposition"] = 'attachment; filename="financeiro.pdf"'
@@ -1454,6 +1460,457 @@ def cto_export_pdf(request):
     tabela = Table(dados, repeatRows=1)
     tabela.setStyle(_estilo_tabela_pdf())
     elementos.append(tabela)
+    doc.build(elementos)
+    return response
+
+
+# ---------------------------------------------------------------------------
+# ESTOQUE DE MATERIAL (admin + operador)
+# ---------------------------------------------------------------------------
+class MaterialListView(SomenteOperacaoMixin, ListView):
+    model = Material
+    template_name = "core/material_list.html"
+    context_object_name = "materiais"
+
+    def get_queryset(self):
+        return Material.objects.filter(ativo=True)
+
+
+class MaterialCreateView(SomenteOperacaoMixin, CreateView):
+    model = Material
+    form_class = MaterialForm
+    template_name = "core/material_form.html"
+    success_url = reverse_lazy("material_list")
+
+    def form_valid(self, form):
+        messages.success(self.request, "Material cadastrado no estoque!")
+        return super().form_valid(form)
+
+
+class MaterialUpdateView(SomenteOperacaoMixin, UpdateView):
+    model = Material
+    form_class = MaterialForm
+    template_name = "core/material_form.html"
+    success_url = reverse_lazy("material_list")
+
+    def form_valid(self, form):
+        messages.success(self.request, "Material atualizado!")
+        return super().form_valid(form)
+
+
+@somente_operacao
+def estoque_entrada(request):
+    if request.method == "POST":
+        form = EntradaEstoqueForm(request.POST)
+        if form.is_valid():
+            material = form.cleaned_data["material"]
+            quantidade = form.cleaned_data["quantidade"]
+            MovimentacaoEstoque.objects.create(
+                material=material, tipo="entrada", quantidade=quantidade,
+                observacao=form.cleaned_data["observacao"], registrado_por=request.user,
+            )
+            messages.success(
+                request,
+                f"Entrada registrada: +{quantidade} {material.get_unidade_medida_display()} de "
+                f"\"{material.nome}\". Saldo atual: {material.saldo_atual()}.",
+            )
+            return redirect("material_list")
+    else:
+        form = EntradaEstoqueForm()
+    return render(request, "core/estoque_entrada_form.html", {"form": form})
+
+
+@somente_operacao
+def estoque_saida(request):
+    if request.method == "POST":
+        form = SaidaEstoqueForm(request.POST)
+        if form.is_valid():
+            material = form.cleaned_data["material"]
+            quantidade = form.cleaned_data["quantidade"]
+            MovimentacaoEstoque.objects.create(
+                material=material, tipo="saida", quantidade=quantidade,
+                tecnico=form.cleaned_data.get("tecnico"),
+                observacao=form.cleaned_data["observacao"], registrado_por=request.user,
+            )
+            tecnico = form.cleaned_data.get("tecnico")
+            destino = f" para {tecnico.get_full_name() or tecnico.username}" if tecnico else ""
+            messages.success(
+                request,
+                f"Retirada registrada: -{quantidade} {material.get_unidade_medida_display()} de "
+                f"\"{material.nome}\"{destino}. Saldo atual: {material.saldo_atual()}.",
+            )
+            return redirect("material_list")
+    else:
+        form = SaidaEstoqueForm()
+    return render(request, "core/estoque_saida_form.html", {"form": form})
+
+
+@somente_operacao
+def estoque_historico(request):
+    movimentacoes = MovimentacaoEstoque.objects.select_related("material", "tecnico", "chamado", "registrado_por")
+    material_id = request.GET.get("material")
+    if material_id:
+        movimentacoes = movimentacoes.filter(material_id=material_id)
+    context = {
+        "movimentacoes": movimentacoes,
+        "materiais": Material.objects.filter(ativo=True),
+        "material_filtro": material_id or "",
+    }
+    return render(request, "core/estoque_historico.html", context)
+
+
+# ---------------------------------------------------------------------------
+# PONTO (Operador e Técnico batem o próprio ponto; Admin monitora e libera)
+# ---------------------------------------------------------------------------
+def _somente_operador_ou_tecnico(user):
+    return user.is_authenticated and user.role in ("operador", "tecnico")
+
+
+@user_passes_test(_somente_operador_ou_tecnico)
+def ponto_bater(request):
+    hoje = timezone.localdate()
+    proximo = proximo_tipo_ponto(request.user, hoje)
+
+    if request.method == "POST" and proximo:
+        eh_chamada = False
+        if proximo == "entrada":
+            eh_chamada = LiberacaoExtraPonto.objects.filter(usuario=request.user, data=hoje, usada=False).exists()
+            LiberacaoExtraPonto.objects.filter(usuario=request.user, data=hoje, usada=False).update(usada=True)
+        RegistroPonto.objects.create(
+            usuario=request.user, tipo=proximo, data_hora=timezone.now(), eh_chamada_de_volta=eh_chamada
+        )
+        messages.success(request, f"Ponto registrado: {dict(RegistroPonto.TIPO_CHOICES)[proximo]} às {timezone.localtime().strftime('%H:%M')}.")
+        return redirect("ponto_bater")
+
+    resumo = resumo_ponto_dia(request.user, hoje)
+    jornada, _ = JornadaTrabalho.objects.get_or_create(usuario=request.user)
+    chamado_de_volta = bool(proximo == "entrada" and resumo["todos_registros"])
+    ultimo_registro = resumo["todos_registros"][-1] if resumo["todos_registros"] else None
+    em_chamada_de_volta = bool(
+        proximo == "saida" and ultimo_registro and ultimo_registro.tipo == "entrada" and ultimo_registro.eh_chamada_de_volta
+    )
+    context = {
+        "resumo": resumo,
+        "proximo": proximo,
+        "proximo_label": dict(RegistroPonto.TIPO_CHOICES).get(proximo),
+        "jornada": jornada,
+        "hoje": hoje,
+        "chamado_de_volta": chamado_de_volta,
+        "em_chamada_de_volta": em_chamada_de_volta,
+    }
+    return render(request, "core/ponto_bater.html", context)
+
+
+@user_passes_test(_somente_operador_ou_tecnico)
+def ponto_meu_historico(request):
+    hoje = timezone.localdate()
+    ano = int(request.GET.get("ano", hoje.year))
+    mes = int(request.GET.get("mes", hoje.month))
+
+    primeiro_dia = date(ano, mes, 1)
+    ultimo_dia_mes = (date(ano, mes + 1, 1) - timedelta(days=1)) if mes < 12 else date(ano, 12, 31)
+    fim = min(ultimo_dia_mes, hoje) if (ano, mes) == (hoje.year, hoje.month) else ultimo_dia_mes
+
+    dias = []
+    data = primeiro_dia
+    while data <= fim:
+        resumo = resumo_ponto_dia(request.user, data)
+        dias.append(resumo)
+        data += timedelta(days=1)
+
+    total_trabalhadas = sum(d["horas_trabalhadas"] for d in dias)
+    total_esperadas = sum(d["horas_esperadas"] for d in dias)
+    context = {
+        "dias": dias,
+        "total_trabalhadas": round(total_trabalhadas, 2),
+        "total_esperadas": round(total_esperadas, 2),
+        "total_diferenca": round(total_trabalhadas - total_esperadas, 2),
+        "mes": mes, "ano": ano,
+        "meses_opcoes": [(i, MESES_PT[i]) for i in range(1, 13)],
+        "anos_opcoes": list(range(hoje.year - 1, hoje.year + 1)),
+    }
+    return render(request, "core/ponto_meu_historico.html", context)
+
+
+@somente_admin
+def ponto_admin_painel(request):
+    hoje = timezone.localdate()
+    funcionarios = User.objects.filter(role__in=["operador", "tecnico"], is_active=True).order_by("first_name", "username")
+    dados = []
+    for f in funcionarios:
+        resumo = resumo_ponto_dia(f, hoje)
+        liberacao_pendente = LiberacaoExtraPonto.objects.filter(usuario=f, data=hoje, usada=False).exists()
+        dados.append({"usuario": f, "resumo": resumo, "liberacao_pendente": liberacao_pendente})
+    context = {"dados": dados, "hoje": hoje}
+    return render(request, "core/ponto_admin_painel.html", context)
+
+
+@somente_admin
+def ponto_liberar_mais_cedo(request):
+    if request.method == "POST":
+        form = PontoLiberarForm(request.POST)
+        if form.is_valid():
+            usuario = form.cleaned_data["usuario"]
+            proximo = proximo_tipo_ponto(usuario, timezone.localdate())
+            if not proximo:
+                messages.warning(request, f"{usuario.get_full_name() or usuario.username} já bateu todos os pontos de hoje.")
+                return redirect("ponto_admin_painel")
+            RegistroPonto.objects.create(
+                usuario=usuario, tipo=proximo, data_hora=timezone.now(),
+                liberado_mais_cedo=True, autorizado_por=request.user,
+                observacao=form.cleaned_data["observacao"],
+            )
+            messages.success(
+                request,
+                f"Registro liberado para {usuario.get_full_name() or usuario.username}: "
+                f"{dict(RegistroPonto.TIPO_CHOICES)[proximo]} às {timezone.localtime().strftime('%H:%M')}.",
+            )
+            return redirect("ponto_admin_painel")
+    else:
+        form = PontoLiberarForm()
+    return render(request, "core/ponto_liberar_form.html", {"form": form})
+
+
+@somente_admin
+def ponto_liberar_acesso_extra(request):
+    if request.method == "POST":
+        form = LiberacaoExtraForm(request.POST)
+        if form.is_valid():
+            usuario = form.cleaned_data["usuario"]
+            LiberacaoExtraPonto.objects.create(
+                usuario=usuario, data=timezone.localdate(),
+                motivo=form.cleaned_data["motivo"], autorizado_por=request.user,
+            )
+            messages.success(
+                request,
+                f"Acesso liberado! Na próxima vez que {usuario.get_full_name() or usuario.username} "
+                f"entrar no sistema, vai poder bater o ponto de entrada de novo.",
+            )
+            return redirect("ponto_admin_painel")
+    else:
+        form = LiberacaoExtraForm()
+    return render(request, "core/ponto_liberar_acesso_extra_form.html", {"form": form})
+
+
+@somente_admin
+def abono_criar(request):
+    if request.method == "POST":
+        form = AbonoForm(request.POST, request.FILES)
+        if form.is_valid():
+            defaults = {"motivo": form.cleaned_data["motivo"], "registrado_por": request.user}
+            if form.cleaned_data.get("anexo"):
+                defaults["anexo"] = form.cleaned_data["anexo"]
+            AbonoPonto.objects.update_or_create(
+                usuario=form.cleaned_data["usuario"], data=form.cleaned_data["data"],
+                defaults=defaults,
+            )
+            usuario = form.cleaned_data["usuario"]
+            messages.success(
+                request,
+                f"Dia {form.cleaned_data['data'].strftime('%d/%m/%Y')} abonado pra "
+                f"{usuario.get_full_name() or usuario.username}. Não vai contar como falta.",
+            )
+            return redirect("ponto_admin_painel")
+    else:
+        form = AbonoForm()
+    return render(request, "core/abono_form.html", {"form": form})
+
+
+@somente_admin
+def jornada_editar(request, usuario_id):
+    funcionario = get_object_or_404(User, pk=usuario_id, role__in=["operador", "tecnico"])
+    jornada, _ = JornadaTrabalho.objects.get_or_create(usuario=funcionario)
+    if request.method == "POST":
+        form = JornadaForm(request.POST, instance=jornada)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Jornada de {funcionario.get_full_name() or funcionario.username} atualizada!")
+            return redirect("ponto_admin_painel")
+    else:
+        form = JornadaForm(instance=jornada)
+    return render(request, "core/jornada_form.html", {"form": form, "funcionario": funcionario})
+
+
+@somente_admin
+def ponto_relatorio(request):
+    hoje = timezone.localdate()
+    ano = int(request.GET.get("ano", hoje.year))
+    mes = int(request.GET.get("mes", hoje.month))
+    usuario_id = request.GET.get("usuario", "")
+
+    funcionarios = User.objects.filter(role__in=["operador", "tecnico"], is_active=True).order_by("first_name", "username")
+    alvo = funcionarios.filter(pk=usuario_id) if usuario_id else funcionarios
+
+    primeiro_dia = date(ano, mes, 1)
+    ultimo_dia_mes = (date(ano + (mes // 12), (mes % 12) + 1, 1) - timedelta(days=1)) if mes < 12 else date(ano, 12, 31)
+    fim = min(ultimo_dia_mes, hoje) if (ano, mes) == (hoje.year, hoje.month) else ultimo_dia_mes
+
+    resultados = []
+    for f in alvo:
+        dias = []
+        data = primeiro_dia
+        while data <= fim:
+            resumo = resumo_ponto_dia(f, data)
+            dias.append(resumo)
+            data += timedelta(days=1)
+        total_trabalhadas = sum(d["horas_trabalhadas"] for d in dias)
+        total_esperadas = sum(d["horas_esperadas"] for d in dias)
+        total_horas_extra = sum(d["diferenca"] for d in dias if d["diferenca"] > 0)
+        total_horas_falta = sum(-d["diferenca"] for d in dias if d["diferenca"] < 0)
+        abonos_mes = AbonoPonto.objects.filter(
+            usuario=f, data__gte=primeiro_dia, data__lte=ultimo_dia_mes
+        ).select_related("registrado_por").order_by("data")
+        resultados.append({
+            "usuario": f, "dias": dias,
+            "total_trabalhadas": round(total_trabalhadas, 2),
+            "total_esperadas": round(total_esperadas, 2),
+            "total_diferenca": round(total_trabalhadas - total_esperadas, 2),
+            "total_horas_extra": round(total_horas_extra, 2),
+            "total_horas_falta": round(total_horas_falta, 2),
+            "abonos_mes": abonos_mes,
+        })
+
+    context = {
+        "resultados": resultados,
+        "funcionarios": funcionarios,
+        "usuario_filtro": usuario_id,
+        "mes": mes, "ano": ano,
+        "meses_opcoes": [(i, MESES_PT[i]) for i in range(1, 13)],
+        "anos_opcoes": list(range(hoje.year - 1, hoje.year + 1)),
+    }
+    return render(request, "core/ponto_relatorio.html", context)
+
+
+@somente_admin
+def ponto_acumulado(request):
+    """Soma, mês a mês, desde o primeiro registro de ponto da pessoa até hoje —
+    pra mostrar quanta hora extra (ou falta) ela tem ACUMULADA no total, sem
+    misturar com o mês atual (que fica só no Relatório mensal)."""
+    hoje = timezone.localdate()
+    usuario_id = request.GET.get("usuario", "")
+    funcionarios = User.objects.filter(role__in=["operador", "tecnico"], is_active=True).order_by("first_name", "username")
+    alvo = funcionarios.filter(pk=usuario_id) if usuario_id else funcionarios
+
+    resultados = []
+    for f in alvo:
+        primeiro_registro = RegistroPonto.objects.filter(usuario=f).order_by("data_hora").first()
+        if not primeiro_registro:
+            continue
+        cursor = primeiro_registro.data_hora.date().replace(day=1)
+
+        meses = []
+        while (cursor.year, cursor.month) <= (hoje.year, hoje.month):
+            ano_m, mes_m = cursor.year, cursor.month
+            primeiro_dia = date(ano_m, mes_m, 1)
+            ultimo_dia_mes = (date(ano_m, mes_m + 1, 1) - timedelta(days=1)) if mes_m < 12 else date(ano_m, 12, 31)
+            fim = min(ultimo_dia_mes, hoje) if (ano_m, mes_m) == (hoje.year, hoje.month) else ultimo_dia_mes
+
+            total_trabalhadas = total_esperadas = total_extra = total_falta = 0.0
+            data = primeiro_dia
+            while data <= fim:
+                resumo = resumo_ponto_dia(f, data)
+                total_trabalhadas += resumo["horas_trabalhadas"]
+                total_esperadas += resumo["horas_esperadas"]
+                if resumo["diferenca"] > 0:
+                    total_extra += resumo["diferenca"]
+                else:
+                    total_falta += -resumo["diferenca"]
+                data += timedelta(days=1)
+
+            meses.append({
+                "mes": mes_m, "ano": ano_m, "mes_nome": MESES_PT[mes_m],
+                "trabalhadas": round(total_trabalhadas, 2),
+                "esperadas": round(total_esperadas, 2),
+                "extra": round(total_extra, 2),
+                "falta": round(total_falta, 2),
+                "saldo": round(total_trabalhadas - total_esperadas, 2),
+            })
+
+            cursor = date(ano_m + 1, 1, 1) if mes_m == 12 else date(ano_m, mes_m + 1, 1)
+
+        # Mês mais recente primeiro na tela
+        meses.reverse()
+        resultados.append({
+            "usuario": f,
+            "meses": meses,
+            "acumulado_extra": round(sum(m["extra"] for m in meses), 2),
+            "acumulado_falta": round(sum(m["falta"] for m in meses), 2),
+            "acumulado_saldo": round(sum(m["saldo"] for m in meses), 2),
+        })
+
+    context = {
+        "resultados": resultados,
+        "funcionarios": funcionarios,
+        "usuario_filtro": usuario_id,
+    }
+    return render(request, "core/ponto_acumulado.html", context)
+
+
+@somente_admin
+def ponto_relatorio_pdf(request):
+    hoje = timezone.localdate()
+    ano = int(request.GET.get("ano", hoje.year))
+    mes = int(request.GET.get("mes", hoje.month))
+    usuario_id = request.GET.get("usuario", "")
+
+    funcionarios = User.objects.filter(role__in=["operador", "tecnico"], is_active=True).order_by("first_name", "username")
+    alvo = funcionarios.filter(pk=usuario_id) if usuario_id else funcionarios
+
+    primeiro_dia = date(ano, mes, 1)
+    ultimo_dia_mes = (date(ano + (mes // 12), (mes % 12) + 1, 1) - timedelta(days=1)) if mes < 12 else date(ano, 12, 31)
+    fim = min(ultimo_dia_mes, hoje) if (ano, mes) == (hoje.year, hoje.month) else ultimo_dia_mes
+
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="relatorio_ponto_{mes:02d}_{ano}.pdf"'
+    doc = SimpleDocTemplate(response, pagesize=landscape(A4), topMargin=1.5 * cm, bottomMargin=1.5 * cm)
+    estilos = getSampleStyleSheet()
+    elementos = [Paragraph(f"Relatório de Ponto - {MESES_PT[mes]}/{ano}", estilos["Title"]), Spacer(1, 12)]
+
+    def hhmm(reg):
+        return timezone.localtime(reg.data_hora).strftime("%H:%M") if reg else "-"
+
+    for f in alvo:
+        dias = []
+        data = primeiro_dia
+        while data <= fim:
+            resumo = resumo_ponto_dia(f, data)
+            dias.append(resumo)
+            data += timedelta(days=1)
+        total_trabalhadas = sum(d["horas_trabalhadas"] for d in dias)
+        total_esperadas = sum(d["horas_esperadas"] for d in dias)
+        total_diferenca = total_trabalhadas - total_esperadas
+
+        nome = f.get_full_name() or f.username
+        elementos.append(Paragraph(
+            f"{nome} ({f.get_role_display()}) — Trabalhadas: {total_trabalhadas:.2f}h · "
+            f"Esperadas: {total_esperadas:.2f}h · Saldo: {total_diferenca:.2f}h",
+            estilos["Heading3"],
+        ))
+        dados = [["Data", "Entrada", "S. Almoço", "V. Almoço", "Saída", "Extra (chamado)", "Trabalhadas", "Esperadas", "Diferença"]]
+        for d in dias:
+            marcador = ""
+            if d["liberado_mais_cedo"]:
+                marcador += " (Liberado)"
+            if d["abono"]:
+                marcador += " (Abonado)"
+            dados.append([
+                d["data"].strftime("%d/%m/%Y") + marcador,
+                hhmm(d["registros"].get("entrada")),
+                hhmm(d["registros"].get("saida_almoco")),
+                hhmm(d["registros"].get("volta_almoco")),
+                hhmm(d["registros"].get("saida")),
+                f"{d['horas_chamada_de_volta']:.2f}h" if d["horas_chamada_de_volta"] > 0 else "-",
+                f"{d['horas_trabalhadas']:.2f}h",
+                f"{d['horas_esperadas']:.2f}h",
+                f"{d['diferenca']:.2f}h",
+            ])
+        tabela = Table(dados, repeatRows=1)
+        tabela.setStyle(_estilo_tabela_pdf())
+        elementos += [tabela, Spacer(1, 16)]
+
+    if not elementos[2:]:
+        elementos.append(Paragraph("Nenhum funcionário encontrado.", estilos["Normal"]))
+
     doc.build(elementos)
     return response
 

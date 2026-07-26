@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block titulo %}Horas Extras Acumuladas{% endblock %}
+{% block conteudo %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <p class="text-muted small mb-0">Soma tudo desde o primeiro ponto batido de cada pessoa até hoje, mês a mês — separado do mês atual.</p>
+  <form method="get" id="form-filtro-acumulado">
+    <select name="usuario" class="form-select" style="max-width:220px;" onchange="document.getElementById('form-filtro-acumulado').submit()">
+      <option value="">Todos os funcionários</option>
+      {% for f in funcionarios %}<option value="{{ f.pk }}" {% if usuario_filtro|stringformat:"s" == f.pk|stringformat:"s" %}selected{% endif %}>{{ f.get_full_name|default:f.username }}</option>{% endfor %}
+    </select>
+  </form>
+</div>
+
+{% for r in resultados %}
+<div class="card p-3 mb-3">
+  <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+    <h6 class="mb-0">{{ r.usuario.get_full_name|default:r.usuario.username }} <span class="badge bg-secondary">{{ r.usuario.get_role_display }}</span></h6>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-md-4 col-6"><div class="kpi-card" style="background:#059669;"><div class="rotulo">Hora extra acumulada</div><div class="valor">{{ r.acumulado_extra }}h</div></div></div>
+    <div class="col-md-4 col-6"><div class="kpi-card" style="background:#dc2626;"><div class="rotulo">Falta acumulada</div><div class="valor">{{ r.acumulado_falta }}h</div></div></div>
+    <div class="col-md-4 col-6"><div class="kpi-card" style="background:{% if r.acumulado_saldo >= 0 %}#2563eb{% else %}#7c2d12{% endif %};"><div class="rotulo">Saldo total acumulado</div><div class="valor">{{ r.acumulado_saldo }}h</div></div></div>
+  </div>
+
+  <table class="table table-sm mb-0">
+    <thead class="table-light"><tr><th>Mês</th><th class="text-end">Trabalhadas</th><th class="text-end">Esperadas</th><th class="text-end">Hora extra</th><th class="text-end">Faltou</th><th class="text-end">Saldo do mês</th></tr></thead>
+    <tbody>
+      {% for m in r.meses %}
+      <tr>
+        <td>{{ m.mes_nome }}/{{ m.ano }}</td>
+        <td class="text-end">{{ m.trabalhadas }}h</td>
+        <td class="text-end">{{ m.esperadas }}h</td>
+        <td class="text-end text-success">{{ m.extra }}h</td>
+        <td class="text-end text-danger">{{ m.falta }}h</td>
+        <td class="text-end {% if m.saldo < 0 %}text-danger{% else %}text-success{% endif %}">{{ m.saldo }}h</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% empty %}
+<p class="text-muted text-center py-4">Nenhum funcionário com ponto batido ainda.</p>
+{% endfor %}
+{% endblock %}

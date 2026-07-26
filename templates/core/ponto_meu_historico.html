@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block titulo %}Meu Histórico de Ponto{% endblock %}
+{% block conteudo %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <a href="{% url 'ponto_bater' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Voltar</a>
+  <form class="d-flex gap-2" method="get" id="form-filtro-meu-ponto">
+    <select name="mes" class="form-select" style="max-width:160px;" onchange="document.getElementById('form-filtro-meu-ponto').submit()">
+      {% for valor, rotulo in meses_opcoes %}<option value="{{ valor }}" {% if valor == mes %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+    </select>
+    <select name="ano" class="form-select" style="max-width:120px;" onchange="document.getElementById('form-filtro-meu-ponto').submit()">
+      {% for a in anos_opcoes %}<option value="{{ a }}" {% if a == ano %}selected{% endif %}>{{ a }}</option>{% endfor %}
+    </select>
+  </form>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4 col-6"><div class="kpi-card" style="background:#2563eb;"><div class="rotulo">Trabalhadas no mês</div><div class="valor">{{ total_trabalhadas }}h</div></div></div>
+  <div class="col-md-4 col-6"><div class="kpi-card" style="background:#64748b;"><div class="rotulo">Esperadas</div><div class="valor">{{ total_esperadas }}h</div></div></div>
+  <div class="col-md-4 col-6"><div class="kpi-card" style="background:{% if total_diferenca >= 0 %}#059669{% else %}#dc2626{% endif %};"><div class="rotulo">{% if total_diferenca >= 0 %}Saldo (hora extra){% else %}Saldo (faltou){% endif %}</div><div class="valor">{{ total_diferenca }}h</div></div></div>
+</div>
+<div class="card">
+  <table class="table table-sm mb-0 align-middle">
+    <thead class="table-light"><tr><th>Data</th><th>Entrada</th><th>S. Almoço</th><th>V. Almoço</th><th>Saída</th><th class="text-end">Extra (chamado)</th><th class="text-end">Trabalhadas</th><th class="text-end">Esperadas</th><th class="text-end">Diferença</th></tr></thead>
+    <tbody>
+      {% for d in dias %}
+      <tr>
+        <td>
+          {{ d.data|date:"d/m/Y (D)" }}
+          {% if d.liberado_mais_cedo %}<span class="badge bg-info text-dark">Liberado</span>{% endif %}
+          {% if d.abono %}<span class="badge bg-primary" title="{{ d.abono.motivo }}">Abonado</span>{% endif %}
+        </td>
+        <td>{% if d.registros.entrada %}{{ d.registros.entrada.data_hora|date:"H:i" }}{% else %}—{% endif %}</td>
+        <td>{% if d.registros.saida_almoco %}{{ d.registros.saida_almoco.data_hora|date:"H:i" }}{% else %}—{% endif %}</td>
+        <td>{% if d.registros.volta_almoco %}{{ d.registros.volta_almoco.data_hora|date:"H:i" }}{% else %}—{% endif %}</td>
+        <td>{% if d.registros.saida %}{{ d.registros.saida.data_hora|date:"H:i" }}{% else %}—{% endif %}</td>
+        <td class="text-end">{% if d.horas_chamada_de_volta > 0 %}<span class="badge bg-warning text-dark">{{ d.horas_chamada_de_volta }}h</span>{% else %}—{% endif %}</td>
+        <td class="text-end">{{ d.horas_trabalhadas }}h</td>
+        <td class="text-end">{{ d.horas_esperadas }}h</td>
+        <td class="text-end {% if d.diferenca < 0 %}text-danger{% else %}text-success{% endif %}">{{ d.diferenca }}h</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9" class="text-center text-muted py-4">Nenhum registro nesse mês.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
