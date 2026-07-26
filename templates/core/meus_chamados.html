@@ -38,6 +38,7 @@
       </div>
       <div class="text-muted small">{{ c.get_tipo_display }} · aberto em {{ c.criado_em|date:"d/m H:i" }}</div>
       <div class="text-muted small">obs: {{ c.descricao|default:"—" }}</div>
+      {% if c.atendimento_iniciado_em %}<div class="text-muted small">Atendimento iniciado às {{ c.atendimento_iniciado_em|date:"H:i" }}</div>{% endif %}
       {% if c.eh_retorno %}
       <div class="small mt-1 fw-semibold" style="color:#fbbf24;"><i class="bi bi-exclamation-triangle"></i> Atendido anteriormente por: {{ c.tecnico_ultimo_atendimento|default:"não identificado" }}</div>
       {% endif %}
@@ -47,10 +48,7 @@
       {% else %}<span class="badge bg-light text-dark">Em andamento</span>{% endif %}
 
       {% if c.status == "aberto" %}
-      <form method="post" action="{% url 'avancar_chamado' c.pk %}">
-        {% csrf_token %}
-        <button class="btn btn-light btn-sm fw-semibold">Iniciar atendimento</button>
-      </form>
+      <a href="{% url 'avancar_chamado' c.pk %}" class="btn btn-warning btn-sm fw-semibold"><i class="bi bi-camera-fill"></i> Iniciar Atendimento</a>
       {% elif c.status == "andamento" %}
       <a href="{% url 'finalizar_chamado' c.pk %}" class="btn btn-success btn-sm"><i class="bi bi-check2-circle"></i> Concluir chamado</a>
       {% endif %}

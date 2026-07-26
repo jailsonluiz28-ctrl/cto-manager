@@ -172,6 +172,13 @@ class Chamado(models.Model):
     descricao = models.TextField("Observação (do operador)", blank=True)
     observacao_fechamento = models.TextField("Observação de fechamento (do técnico)", blank=True)
     pego_em = models.DateTimeField(null=True, blank=True)
+    atendimento_iniciado_em = models.DateTimeField(
+        null=True, blank=True,
+        help_text="Quando o técnico bateu a foto e apertou 'Iniciar Atendimento' (chegada no cliente)",
+    )
+    foto_inicio = models.ImageField(
+        "Foto de início (obrigatória)", upload_to="chamados/inicio/%Y/%m/", null=True, blank=True
+    )
     concluido_em = models.DateTimeField(null=True, blank=True)
 
     eh_retorno = models.BooleanField(default=False)
@@ -191,8 +198,9 @@ class Chamado(models.Model):
         ordering = ["-criado_em"]
 
     def duracao_atendimento(self):
-        if self.pego_em and self.concluido_em:
-            return self.concluido_em - self.pego_em
+        inicio = self.atendimento_iniciado_em or self.pego_em
+        if inicio and self.concluido_em:
+            return self.concluido_em - inicio
         return None
 
     def duracao_formatada(self):

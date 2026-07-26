@@ -595,10 +595,9 @@ def pegar_chamado(request, pk):
 
     if chamado.tecnico_id is None:
         chamado.tecnico = request.user
-        chamado.status = "andamento"
         chamado.pego_em = timezone.now()
         chamado.save()
-        messages.success(request, f"Chamado #{chamado.id} atribuído a você.")
+        messages.success(request, f"Chamado #{chamado.id} atribuído a você. Bata uma foto pra iniciar o atendimento.")
         return redirect("meus_chamados")
     else:
         messages.warning(request, "Esse chamado já foi assumido por outro técnico.")
@@ -607,13 +606,26 @@ def pegar_chamado(request, pk):
 
 @login_required
 def avancar_chamado(request, pk):
-    """Usado só para o passo 'Iniciar atendimento' (aberto -> andamento).
-    Para concluir, o técnico precisa passar pela tela de finalizar_chamado."""
+    """Passo 'Iniciar atendimento' (aguardando início -> em andamento). Exige uma
+    foto tirada na hora (câmera do celular) como comprovante de chegada no cliente,
+    e marca o horário exato de início pra calcular quanto tempo o técnico ficou lá."""
     chamado = get_object_or_404(Chamado, pk=pk, tecnico=request.user)
-    if chamado.status == "aberto":
+    if chamado.status != "aberto":
+        return redirect("meus_chamados")
+
+    if request.method == "POST":
+        foto = request.FILES.get("foto_inicio")
+        if not foto:
+            messages.error(request, "Tire uma foto pra iniciar o atendimento.")
+            return redirect("avancar_chamado", pk=pk)
+        chamado.foto_inicio = foto
+        chamado.atendimento_iniciado_em = timezone.now()
         chamado.status = "andamento"
         chamado.save()
-    return redirect("meus_chamados")
+        messages.success(request, f"Atendimento iniciado às {timezone.localtime().strftime('%H:%M')}.")
+        return redirect("meus_chamados")
+
+    return render(request, "core/chamado_iniciar.html", {"chamado": chamado})
 
 
 @login_required

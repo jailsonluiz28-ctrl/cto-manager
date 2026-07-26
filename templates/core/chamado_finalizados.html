@@ -8,7 +8,7 @@
 <div class="card">
   <table class="table mb-0 align-middle">
     <thead class="table-light">
-      <tr><th>#</th><th>Cliente</th><th>Tipo</th><th>Técnico</th><th>Finalizado por</th><th>Pego às</th><th>Concluído às</th><th>Duração</th><th>Observação</th></tr>
+      <tr><th>#</th><th>Cliente</th><th>Tipo</th><th>Técnico</th><th>Finalizado por</th><th>Pego às</th><th>Iniciado às</th><th>Concluído às</th><th>Duração</th><th>Observação</th></tr>
     </thead>
     <tbody>
       {% for c in chamados %}
@@ -26,12 +26,16 @@
           {% else %}—{% endif %}
         </td>
         <td class="text-muted small">{{ c.pego_em|date:"d/m H:i"|default:"—" }}</td>
+        <td class="text-muted small">
+          {{ c.atendimento_iniciado_em|date:"d/m H:i"|default:"—" }}
+          {% if c.foto_inicio %}<a href="{{ c.foto_inicio.url }}" target="_blank" title="Ver foto de chegada"><i class="bi bi-camera-fill ms-1"></i></a>{% endif %}
+        </td>
         <td class="text-muted small">{{ c.concluido_em|date:"d/m H:i"|default:"—" }}</td>
         <td><span class="badge bg-success-subtle text-success">{{ c.duracao_formatada }}</span></td>
         <td class="text-muted small" style="max-width:220px;">{{ c.observacao_fechamento|default:"—" }}</td>
       </tr>
       {% empty %}
-      <tr><td colspan="9" class="text-center text-muted py-4">Nenhum chamado finalizado ainda.</td></tr>
+      <tr><td colspan="10" class="text-center text-muted py-4">Nenhum chamado finalizado ainda.</td></tr>
       {% endfor %}
     </tbody>
   </table>
