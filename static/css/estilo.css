@@ -20,6 +20,41 @@ body { background-color: #f8f9fa; }
 .menu-link:hover { background-color: #1e293b; color: #e2e8f0; }
 .menu-link.active { background-color: #2563eb; color: #fff; }
 .conteudo { min-height: 100vh; min-width: 0; overflow-x: auto; }
+
+/* --- Menu mobile (celular/tablet) --- */
+.mobile-topbar {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  background-color: #0f172a;
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 1060;
+}
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .45);
+  z-index: 1040;
+}
+.sidebar-overlay.ativo { display: block; }
+
+@media (max-width: 767.98px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 1050;
+    transform: translateX(-100%);
+    transition: transform .25s ease;
+  }
+  .sidebar.sidebar-aberta { transform: translateX(0); }
+  .conteudo { width: 100%; }
+  .kpi-card .valor { font-size: 22px; }
+}
 .kpi-card { border-radius: 12px; padding: 16px; color: #fff; }
 .kpi-card .valor { font-size: 26px; font-weight: 700; }
 .kpi-card .rotulo { font-size: 12px; opacity: .9; }

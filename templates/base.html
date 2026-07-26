@@ -11,8 +11,13 @@
 </head>
 <body>
 {% if user.is_authenticated %}
+<div class="mobile-topbar d-md-none">
+  <button class="btn btn-sm btn-outline-light" id="btnMenuMobile" type="button"><i class="bi bi-list" style="font-size:1.4rem;"></i></button>
+  <span class="fw-bold ms-2">CTO MANAGER PRO</span>
+</div>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
 <div class="d-flex">
-  <aside class="sidebar text-white p-3">
+  <aside class="sidebar text-white p-3" id="sidebarMenu">
     <div class="d-flex align-items-center gap-2 mb-1">
       <div class="logo-icone"><i class="bi bi-broadcast-pin"></i></div>
       <div>
@@ -74,5 +79,26 @@
 {% block conteudo_publico %}{% endblock %}
 {% endif %}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const btn = document.getElementById("btnMenuMobile");
+  const sidebar = document.getElementById("sidebarMenu");
+  const overlay = document.getElementById("sidebarOverlay");
+  if (!btn || !sidebar || !overlay) return;
+
+  function abrir() { sidebar.classList.add("sidebar-aberta"); overlay.classList.add("ativo"); }
+  function fechar() { sidebar.classList.remove("sidebar-aberta"); overlay.classList.remove("ativo"); }
+
+  btn.addEventListener("click", function () {
+    sidebar.classList.contains("sidebar-aberta") ? fechar() : abrir();
+  });
+  overlay.addEventListener("click", fechar);
+
+  // Fecha o menu sozinho quando clica num link (só faz sentido no celular)
+  sidebar.querySelectorAll("a.menu-link").forEach(function (link) {
+    link.addEventListener("click", fechar);
+  });
+});
+</script>
 </body>
 </html>
