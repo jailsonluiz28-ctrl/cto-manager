@@ -3,28 +3,31 @@
 {% block conteudo %}
 
 <form class="d-flex gap-2 mb-3" method="get" id="form-mes-rel">
-  <select name="mes" class="form-select" style="max-width:160px;" onchange="document.getElementById('form-mes-rel').submit()">
+  <input type="hidden" name="aba" id="aba-input-mes" value="{{ aba_ativa }}">
+  <select name="mes" class="form-select" style="max-width:160px;" onchange="submitFormMesRel()">
     {% for valor, rotulo in meses_opcoes %}<option value="{{ valor }}" {% if valor == mes %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}
   </select>
-  <select name="ano" class="form-select" style="max-width:120px;" onchange="document.getElementById('form-mes-rel').submit()">
+  <select name="ano" class="form-select" style="max-width:120px;" onchange="submitFormMesRel()">
     {% for a in anos_opcoes %}<option value="{{ a }}" {% if a == ano %}selected{% endif %}>{{ a }}</option>{% endfor %}
   </select>
 </form>
 
-<ul class="nav nav-pills mb-3">
-  <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#tecnicos">Técnicos</a></li>
-  <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#operadores">Operadores</a></li>
-  <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#chamados">Chamados do Mês</a></li>
-  <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#clientes">Clientes</a></li>
-  <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#crescimento">Financeiro / Crescimento</a></li>
+<ul class="nav nav-pills mb-3" id="pills-relatorios">
+  <li class="nav-item"><a class="nav-link {% if aba_ativa == 'tecnicos' %}active{% endif %}" data-bs-toggle="pill" href="#tecnicos">Técnicos</a></li>
+  <li class="nav-item"><a class="nav-link {% if aba_ativa == 'operadores' %}active{% endif %}" data-bs-toggle="pill" href="#operadores">Operadores</a></li>
+  <li class="nav-item"><a class="nav-link {% if aba_ativa == 'chamados' %}active{% endif %}" data-bs-toggle="pill" href="#chamados">Chamados do Mês</a></li>
+  <li class="nav-item"><a class="nav-link {% if aba_ativa == 'clientes' %}active{% endif %}" data-bs-toggle="pill" href="#clientes">Clientes</a></li>
+  <li class="nav-item"><a class="nav-link {% if aba_ativa == 'crescimento' %}active{% endif %}" data-bs-toggle="pill" href="#crescimento">Financeiro / Crescimento</a></li>
+  <li class="nav-item"><a class="nav-link {% if aba_ativa == 'tempo-atendimento' %}active{% endif %}" data-bs-toggle="pill" href="#tempo-atendimento">Tempo em Atendimento</a></li>
 </ul>
 
 <div class="tab-content">
 
   {# ---------------- TÉCNICOS ---------------- #}
-  <div class="tab-pane fade show active" id="tecnicos">
+  <div class="tab-pane fade {% if aba_ativa == 'tecnicos' %}show active{% endif %}" id="tecnicos">
     <form class="d-flex gap-2 mb-3" method="get">
       <input type="hidden" name="mes" value="{{ mes }}"><input type="hidden" name="ano" value="{{ ano }}">
+      <input type="hidden" name="aba" value="tecnicos">
       <select name="tecnico" class="form-select" style="max-width:220px;" onchange="this.form.submit()">
         <option value="">Todos os técnicos</option>
         {% for t in tecnicos_todos %}<option value="{{ t.id }}" {% if tecnico_filtro == t.id|stringformat:"s" %}selected{% endif %}>{{ t.get_full_name|default:t.username }}</option>{% endfor %}
@@ -50,9 +53,10 @@
   </div>
 
   {# ---------------- OPERADORES ---------------- #}
-  <div class="tab-pane fade" id="operadores">
+  <div class="tab-pane fade {% if aba_ativa == 'operadores' %}show active{% endif %}" id="operadores">
     <form class="d-flex gap-2 mb-3" method="get">
       <input type="hidden" name="mes" value="{{ mes }}"><input type="hidden" name="ano" value="{{ ano }}">
+      <input type="hidden" name="aba" value="operadores">
       <select name="operador" class="form-select" style="max-width:220px;" onchange="this.form.submit()">
         <option value="">Todos os operadores</option>
         {% for o in operadores_todos %}<option value="{{ o.id }}" {% if operador_filtro == o.id|stringformat:"s" %}selected{% endif %}>{{ o.get_full_name|default:o.username }}</option>{% endfor %}
@@ -73,7 +77,7 @@
   </div>
 
   {# ---------------- CHAMADOS DO MÊS ---------------- #}
-  <div class="tab-pane fade" id="chamados">
+  <div class="tab-pane fade {% if aba_ativa == 'chamados' %}show active{% endif %}" id="chamados">
     <div class="row g-3 mb-3">
       <div class="col-md-4">
         <div class="kpi-card" style="background:#2563eb;"><div class="rotulo">Total de chamados em {{ mes_ref|date:"F/Y" }}</div><div class="valor">{{ total_chamados_mes }}</div></div>
@@ -109,7 +113,7 @@
   </div>
 
   {# ---------------- CLIENTES ---------------- #}
-  <div class="tab-pane fade" id="clientes">
+  <div class="tab-pane fade {% if aba_ativa == 'clientes' %}show active{% endif %}" id="clientes">
     <div class="row g-3 mb-4">
       <div class="col-md-4 col-6"><div class="kpi-card" style="background:#059669;"><div class="rotulo">Novos clientes (instalação)</div><div class="valor">{{ novos_count }}</div></div></div>
       <div class="col-md-4 col-6"><div class="kpi-card" style="background:#dc2626;"><div class="rotulo">Cancelamentos</div><div class="valor">{{ cancelados_count }}</div></div></div>
@@ -135,7 +139,7 @@
   </div>
 
   {# ---------------- FINANCEIRO / CRESCIMENTO ---------------- #}
-  <div class="tab-pane fade" id="crescimento">
+  <div class="tab-pane fade {% if aba_ativa == 'crescimento' %}show active{% endif %}" id="crescimento">
     <div class="row g-3 mb-4">
       <div class="col-md-3 col-6"><div class="kpi-card" style="background:#059669;"><div class="rotulo">Novos clientes (R$)</div><div class="valor">+R$ {{ receita_nova|floatformat:2 }}</div></div></div>
       <div class="col-md-3 col-6"><div class="kpi-card" style="background:#dc2626;"><div class="rotulo">Cancelamentos (R$)</div><div class="valor">-R$ {{ receita_perdida|floatformat:2 }}</div></div></div>
@@ -147,10 +151,100 @@
       <canvas id="graficoTendencia" height="80"></canvas>
     </div>
   </div>
+  {# ---------------- TEMPO EM ATENDIMENTO ---------------- #}
+  <div class="tab-pane fade {% if aba_ativa == 'tempo-atendimento' %}show active{% endif %}" id="tempo-atendimento">
+    <form class="d-flex flex-wrap gap-2 mb-3" method="get">
+      <input type="hidden" name="mes" value="{{ mes }}"><input type="hidden" name="ano" value="{{ ano }}">
+      <input type="hidden" name="aba" value="tempo-atendimento">
+      <select name="tecnico_tempo" class="form-select" style="max-width:220px;" onchange="this.form.submit()">
+        <option value="">Todos os técnicos</option>
+        {% for t in tecnicos_todos %}<option value="{{ t.id }}" {% if tecnico_tempo_filtro == t.id|stringformat:"s" %}selected{% endif %}>{{ t.get_full_name|default:t.username }}</option>{% endfor %}
+      </select>
+      <a class="btn btn-outline-primary ms-auto"
+         href="{% url 'relatorio_tempo_atendimento_pdf' %}?mes={{ mes }}&ano={{ ano }}&tecnico={{ tecnico_tempo_filtro }}">
+        <i class="bi bi-file-earmark-pdf"></i> Baixar PDF
+      </a>
+    </form>
+
+    <div class="row mb-3">
+      <div class="col-auto">
+        <div class="card px-3 py-2">
+          <span class="text-muted small">Atendimentos no mês</span>
+          <span class="fs-4 fw-semibold">{{ total_chamados_tempo }}</span>
+        </div>
+      </div>
+      <div class="col-auto">
+        <div class="card px-3 py-2">
+          <span class="text-muted small">Tempo total somado</span>
+          <span class="fs-4 fw-semibold">{{ total_geral_tempo_fmt }}</span>
+        </div>
+      </div>
+    </div>
+
+    <h6 class="text-muted mb-2">Resumo por técnico</h6>
+    <div class="card mb-4">
+      <table class="table mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Técnico</th>
+            <th class="text-center">Atendimentos</th>
+            <th class="text-center">Tempo total</th>
+            <th class="text-center">Tempo médio</th>
+            <th class="text-center">Mais rápido</th>
+            <th class="text-center">Mais demorado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in resumo_tempo %}
+          <tr>
+            <td>{{ r.pessoa.get_full_name|default:r.pessoa.username }}</td>
+            <td class="text-center">{{ r.qtd }}</td>
+            <td class="text-center"><span class="badge bg-primary-subtle text-primary">{{ r.total_fmt }}</span></td>
+            <td class="text-center">{{ r.media_fmt }}</td>
+            <td class="text-center text-success">{{ r.minimo_fmt }}</td>
+            <td class="text-center text-danger">{{ r.maximo_fmt }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center text-muted py-4">Nenhum atendimento com tempo registrado nesse mês.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h6 class="text-muted mb-2">Detalhado por atendimento</h6>
+    <div class="card">
+      <table class="table mb-0 align-middle">
+        <thead class="table-light">
+          <tr><th>Cliente</th><th>Técnico</th><th>Tipo</th><th>Iniciado</th><th>Concluído</th><th>Duração</th></tr>
+        </thead>
+        <tbody>
+          {% for item in detalhado_tempo %}
+          <tr>
+            <td>{{ item.chamado.cliente.nome }}</td>
+            <td>{% if item.chamado.tecnico %}{{ item.chamado.tecnico.get_full_name|default:item.chamado.tecnico.username }}{% else %}—{% endif %}</td>
+            <td>{{ item.chamado.get_tipo_display }}</td>
+            <td class="text-muted small">{{ item.chamado.atendimento_iniciado_em|date:"d/m H:i"|default:"—" }}</td>
+            <td class="text-muted small">{{ item.chamado.concluido_em|date:"d/m H:i" }}</td>
+            <td><span class="badge bg-success-subtle text-success">{{ item.duracao_fmt }}</span></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center text-muted py-4">Nenhum atendimento com tempo registrado nesse mês.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+function submitFormMesRel() {
+  const painelAtivo = document.querySelector("#tempo-atendimento.tab-pane.show.active, #tecnicos.tab-pane.show.active, #operadores.tab-pane.show.active, #chamados.tab-pane.show.active, #clientes.tab-pane.show.active, #crescimento.tab-pane.show.active");
+  document.getElementById("aba-input-mes").value = painelAtivo ? painelAtivo.id : "tecnicos";
+  document.getElementById("form-mes-rel").submit();
+}
+</script>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
   const ctx = document.getElementById("graficoTendencia");

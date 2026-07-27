@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block titulo %}Relatório de Tempo em Atendimento{% endblock %}
+{% block conteudo %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0 text-muted">Quanto tempo cada técnico ficou na casa do cliente</h5>
+  <a href="{% url 'chamado_finalizados' %}" class="btn btn-outline-secondary">← Voltar para Chamados Finalizados</a>
+</div>
+
+<form class="d-flex flex-wrap gap-2 mb-3" method="get" id="form-filtro-tempo">
+  <select name="mes" class="form-select" style="max-width:180px;" onchange="document.getElementById('form-filtro-tempo').submit()">
+    <option value="" {% if not mes %}selected{% endif %}>Ano inteiro</option>
+    {% for valor, rotulo in meses_opcoes %}<option value="{{ valor }}" {% if mes|stringformat:"s" == valor|stringformat:"s" %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+  </select>
+  <select name="ano" class="form-select" style="max-width:120px;" onchange="document.getElementById('form-filtro-tempo').submit()">
+    {% for a in anos_opcoes %}<option value="{{ a }}" {% if a == ano %}selected{% endif %}>{{ a }}</option>{% endfor %}
+  </select>
+  <select name="tecnico" class="form-select" style="max-width:220px;" onchange="document.getElementById('form-filtro-tempo').submit()">
+    <option value="">Todos os técnicos</option>
+    {% for t in tecnicos_todos %}<option value="{{ t.id }}" {% if tecnico_filtro == t.id|stringformat:"s" %}selected{% endif %}>{{ t.get_full_name|default:t.username }}</option>{% endfor %}
+  </select>
+  <a class="btn btn-outline-primary ms-auto"
+     href="{% url 'relatorio_tempo_atendimento_pdf' %}?mes={{ mes }}&ano={{ ano }}&tecnico={{ tecnico_filtro }}">
+    <i class="bi bi-file-earmark-pdf"></i> Baixar PDF
+  </a>
+</form>
+
+<div class="row mb-3">
+  <div class="col-auto">
+    <div class="card px-3 py-2">
+      <span class="text-muted small">Atendimentos no período</span>
+      <span class="fs-4 fw-semibold">{{ total_chamados }}</span>
+    </div>
+  </div>
+  <div class="col-auto">
+    <div class="card px-3 py-2">
+      <span class="text-muted small">Tempo total somado</span>
+      <span class="fs-4 fw-semibold">{{ total_geral_fmt }}</span>
+    </div>
+  </div>
+</div>
+
+<h6 class="text-muted mb-2">Resumo por técnico</h6>
+<div class="card mb-4">
+  <table class="table mb-0 align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Técnico</th>
+        <th class="text-center">Atendimentos</th>
+        <th class="text-center">Tempo total</th>
+        <th class="text-center">Tempo médio</th>
+        <th class="text-center">Mais rápido</th>
+        <th class="text-center">Mais demorado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in resumo %}
+      <tr>
+        <td>{{ r.pessoa.get_full_name|default:r.pessoa.username }}</td>
+        <td class="text-center">{{ r.qtd }}</td>
+        <td class="text-center"><span class="badge bg-primary-subtle text-primary">{{ r.total_fmt }}</span></td>
+        <td class="text-center">{{ r.media_fmt }}</td>
+        <td class="text-center text-success">{{ r.minimo_fmt }}</td>
+        <td class="text-center text-danger">{{ r.maximo_fmt }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="text-center text-muted py-4">Nenhum atendimento com tempo registrado nesse período.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h6 class="text-muted mb-2">Detalhado por atendimento</h6>
+<div class="card">
+  <table class="table mb-0 align-middle">
+    <thead class="table-light">
+      <tr><th>Cliente</th><th>Técnico</th><th>Tipo</th><th>Iniciado</th><th>Concluído</th><th>Duração</th></tr>
+    </thead>
+    <tbody>
+      {% for item in detalhado %}
+      <tr>
+        <td>{{ item.chamado.cliente.nome }}</td>
+        <td>{% if item.chamado.tecnico %}{{ item.chamado.tecnico.get_full_name|default:item.chamado.tecnico.username }}{% else %}—{% endif %}</td>
+        <td>{{ item.chamado.get_tipo_display }}</td>
+        <td class="text-muted small">{{ item.chamado.atendimento_iniciado_em|date:"d/m H:i"|default:"—" }}</td>
+        <td class="text-muted small">{{ item.chamado.concluido_em|date:"d/m H:i" }}</td>
+        <td><span class="badge bg-success-subtle text-success">{{ item.duracao_fmt }}</span></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="text-center text-muted py-4">Nenhum atendimento com tempo registrado nesse período.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

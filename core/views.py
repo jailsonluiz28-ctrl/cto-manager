@@ -544,6 +544,155 @@ class ChamadoFinalizadosListView(SomenteOperacaoMixin, ListView):
         return Chamado.objects.filter(status="concluido").select_related("cliente", "tecnico")
 
 
+def _fmt_min(minutos):
+    """Formata minutos (float) como '1h 20min' ou '35min'."""
+    if minutos is None:
+        return "—"
+    total = int(round(minutos))
+    horas, mins = divmod(total, 60)
+    if horas:
+        return f"{horas}h {mins}min"
+    return f"{mins}min"
+
+
+def _calcular_tempo_atendimento(ano, mes, tecnico_filtro):
+    """Calcula o resumo por técnico + a lista detalhada de tempo em atendimento
+    (tempo real na casa do cliente: de 'Iniciar Atendimento' até a conclusão,
+    ou de quando pegou o chamado, se não tiver foto de início registrada).
+    `mes` pode ser vazio/None para considerar o ano inteiro."""
+    chamados_qs = (
+        Chamado.objects.filter(status="concluido", concluido_em__isnull=False)
+        .filter(concluido_em__year=ano)
+        .select_related("cliente", "tecnico")
+        .order_by("-concluido_em")
+    )
+    if mes:
+        chamados_qs = chamados_qs.filter(concluido_em__month=int(mes))
+    if tecnico_filtro:
+        chamados_qs = chamados_qs.filter(tecnico_id=tecnico_filtro)
+
+    detalhado = []
+    resumo_por_tecnico = {}
+    for c in chamados_qs:
+        delta = c.duracao_atendimento()
+        if not delta:
+            continue
+        minutos = delta.total_seconds() / 60
+        detalhado.append({"chamado": c, "minutos": minutos, "duracao_fmt": _fmt_min(minutos)})
+
+        tecnico = c.tecnico
+        if not tecnico:
+            continue
+        chave = tecnico.pk
+        if chave not in resumo_por_tecnico:
+            resumo_por_tecnico[chave] = {
+                "pessoa": tecnico, "qtd": 0, "total_min": 0.0, "minimo": None, "maximo": None,
+            }
+        r = resumo_por_tecnico[chave]
+        r["qtd"] += 1
+        r["total_min"] += minutos
+        if r["minimo"] is None or minutos < r["minimo"]:
+            r["minimo"] = minutos
+        if r["maximo"] is None or minutos > r["maximo"]:
+            r["maximo"] = minutos
+
+    resumo = []
+    for r in resumo_por_tecnico.values():
+        media = r["total_min"] / r["qtd"] if r["qtd"] else 0
+        resumo.append({
+            "pessoa": r["pessoa"],
+            "qtd": r["qtd"],
+            "total_fmt": _fmt_min(r["total_min"]),
+            "media_fmt": _fmt_min(media),
+            "minimo_fmt": _fmt_min(r["minimo"]),
+            "maximo_fmt": _fmt_min(r["maximo"]),
+            "total_min": r["total_min"],
+        })
+    resumo.sort(key=lambda x: x["total_min"], reverse=True)
+
+    total_geral_min = sum(d["minutos"] for d in detalhado)
+
+    return {
+        "resumo": resumo,
+        "detalhado": detalhado,
+        "total_geral_fmt": _fmt_min(total_geral_min),
+        "total_chamados": len(detalhado),
+    }
+
+
+def _dados_relatorio_tempo_atendimento(request):
+    """Lê os filtros da URL (usados pela página própria e pelo PDF) e monta o contexto completo."""
+    hoje = timezone.now().date()
+    ano = int(request.GET.get("ano", hoje.year))
+    mes = request.GET.get("mes", "")
+    tecnico_filtro = request.GET.get("tecnico", "")
+
+    calculado = _calcular_tempo_atendimento(ano, mes, tecnico_filtro)
+
+    return {
+        "mes": mes, "ano": ano,
+        "meses_opcoes": [(i, MESES_PT[i]) for i in range(1, 13)],
+        "anos_opcoes": list(range(hoje.year - 2, hoje.year + 1)),
+        "tecnicos_todos": User.objects.filter(role="tecnico"),
+        "tecnico_filtro": tecnico_filtro,
+        **calculado,
+    }
+
+
+@user_passes_test(lambda u: u.is_authenticated and u.role in ("admin", "operador"))
+def relatorio_tempo_atendimento(request):
+    """Relatório: quanto tempo cada técnico ficou na casa do cliente (resumo + detalhado)."""
+    context = _dados_relatorio_tempo_atendimento(request)
+    return render(request, "core/relatorio_tempo_atendimento.html", context)
+
+
+@user_passes_test(lambda u: u.is_authenticated and u.role in ("admin", "operador"))
+def relatorio_tempo_atendimento_pdf(request):
+    dados = _dados_relatorio_tempo_atendimento(request)
+    mes = dados["mes"]
+    ano = dados["ano"]
+    titulo_periodo = f"{MESES_PT[int(mes)]}/{ano}" if mes else f"Ano de {ano}"
+
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="relatorio_tempo_atendimento_{ano}.pdf"'
+    doc = SimpleDocTemplate(response, pagesize=landscape(A4), topMargin=1.5 * cm, bottomMargin=1.5 * cm)
+    estilos = getSampleStyleSheet()
+    elementos = [
+        Paragraph(f"Relatório de Tempo em Atendimento - {titulo_periodo}", estilos["Title"]),
+        Spacer(1, 12),
+    ]
+
+    elementos.append(Paragraph("Resumo por técnico", estilos["Heading2"]))
+    dados_resumo = [["Técnico", "Atendimentos", "Tempo total", "Tempo médio", "Mais rápido", "Mais demorado"]]
+    for r in dados["resumo"]:
+        dados_resumo.append([
+            r["pessoa"].get_full_name() or r["pessoa"].username,
+            str(r["qtd"]), r["total_fmt"], r["media_fmt"], r["minimo_fmt"], r["maximo_fmt"],
+        ])
+    tabela_resumo = Table(dados_resumo, repeatRows=1)
+    tabela_resumo.setStyle(_estilo_tabela_pdf())
+    elementos += [tabela_resumo, Spacer(1, 20)]
+
+    elementos.append(Paragraph("Detalhado por atendimento", estilos["Heading2"]))
+    dados_detalhe = [["Cliente", "Técnico", "Tipo", "Iniciado", "Concluído", "Duração"]]
+    for item in dados["detalhado"]:
+        c = item["chamado"]
+        dados_detalhe.append([
+            c.cliente.nome,
+            c.tecnico.get_full_name() or c.tecnico.username if c.tecnico else "—",
+            c.get_tipo_display(),
+            timezone.localtime(c.atendimento_iniciado_em).strftime("%d/%m %H:%M") if c.atendimento_iniciado_em else "—",
+            timezone.localtime(c.concluido_em).strftime("%d/%m %H:%M"),
+            item["duracao_fmt"],
+        ])
+    tabela_detalhe = Table(dados_detalhe, repeatRows=1)
+    tabela_detalhe.setStyle(_estilo_tabela_pdf())
+    elementos.append(tabela_detalhe)
+
+    doc.build(elementos)
+    return response
+
+
 # ---------------------------------------------------------------------------
 # ÁREA DO TÉCNICO
 # ---------------------------------------------------------------------------
@@ -1246,6 +1395,11 @@ def relatorios_view(request):
     mes = int(request.GET.get("mes", hoje.month))
     tecnico_filtro = request.GET.get("tecnico", "")
     operador_filtro = request.GET.get("operador", "")
+    tecnico_tempo_filtro = request.GET.get("tecnico_tempo", "")
+    abas_validas = {"tecnicos", "operadores", "chamados", "clientes", "crescimento", "tempo-atendimento"}
+    aba_ativa = request.GET.get("aba", "tecnicos")
+    if aba_ativa not in abas_validas:
+        aba_ativa = "tecnicos"
 
     # --- 1. Técnicos: quantos chamados cada um atendeu ---
     tecnicos_qs = User.objects.filter(role="tecnico")
@@ -1330,6 +1484,9 @@ def relatorios_view(request):
         )
         tendencia.append({"mes_ano": f"{MESES_PT[mes_i][:3]}/{ano_i}", "saldo": rn - rp + aj})
 
+    # --- 6. Tempo em atendimento: quanto tempo cada técnico ficou na casa do cliente ---
+    dados_tempo = _calcular_tempo_atendimento(ano, mes, tecnico_tempo_filtro)
+
     context = {
         "mes": mes, "ano": ano, "mes_ref": date(ano, mes, 1),
         "meses_opcoes": [(i, MESES_PT[i]) for i in range(1, 13)],
@@ -1354,6 +1511,12 @@ def relatorios_view(request):
         "saldo_mes": saldo_mes,
         "percentual_saldo": percentual_saldo,
         "tendencia": tendencia,
+        "aba_ativa": aba_ativa,
+        "tecnico_tempo_filtro": tecnico_tempo_filtro,
+        "resumo_tempo": dados_tempo["resumo"],
+        "detalhado_tempo": dados_tempo["detalhado"],
+        "total_geral_tempo_fmt": dados_tempo["total_geral_fmt"],
+        "total_chamados_tempo": dados_tempo["total_chamados"],
     }
     return render(request, "core/relatorios.html", context)
 

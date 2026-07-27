@@ -29,6 +29,8 @@ urlpatterns = [
 
     path("chamados/", views.ChamadoListView.as_view(), name="chamado_list"),
     path("chamados/finalizados/", views.ChamadoFinalizadosListView.as_view(), name="chamado_finalizados"),
+    path("chamados/relatorio-tempo/", views.relatorio_tempo_atendimento, name="relatorio_tempo_atendimento"),
+    path("chamados/relatorio-tempo/pdf/", views.relatorio_tempo_atendimento_pdf, name="relatorio_tempo_atendimento_pdf"),
     path("chamados/novo/", views.ChamadoCreateView.as_view(), name="chamado_create"),
     path("chamados/<int:pk>/reatribuir/", views.reatribuir_chamado, name="reatribuir_chamado"),
     path("chamados/<int:pk>/prioridade/", views.alterar_prioridade_chamado, name="alterar_prioridade_chamado"),
