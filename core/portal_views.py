@@ -150,7 +150,7 @@ def portal_definir_senha(request):
             cliente.portal_senha_hash = make_password(senha1)
             cliente.portal_senha_definida_em = timezone.now()
             cliente.save(update_fields=["portal_senha_hash", "portal_senha_definida_em"])
-            del request.session["portal_definir_senha_cliente_id"]
+            request.session.pop("portal_definir_senha_cliente_id", None)
             messages.success(request, "Senha cadastrada! Agora é só entrar com seu CPF e a senha.")
             return redirect("portal_login")
 
