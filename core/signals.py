@@ -7,7 +7,10 @@ from .models import Cliente, CTO, Chamado, Plano, LogAtividade
 
 
 def _registrar(acao, detalhes=""):
-    LogAtividade.objects.create(usuario=get_current_user(), acao=acao, detalhes=detalhes)
+    usuario = get_current_user()
+    if not getattr(usuario, "is_authenticated", False):
+        usuario = None
+    LogAtividade.objects.create(usuario=usuario, acao=acao, detalhes=detalhes)
 
 
 @receiver(user_logged_in)
