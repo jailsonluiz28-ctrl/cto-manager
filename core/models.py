@@ -110,6 +110,9 @@ class Cliente(models.Model):
 
     criado_em = models.DateTimeField(auto_now_add=True)
 
+    latitude = models.FloatField(null=True, blank=True, editable=False)
+    longitude = models.FloatField(null=True, blank=True, editable=False)
+
     class Meta:
         ordering = ["-criado_em"]
 
@@ -143,7 +146,8 @@ class Chamado(models.Model):
         ("sem_sinal", "Sem sinal"),
         ("lentidao", "Lentidão"),
         ("instalacao", "Instalação nova"),
-        ("equipamento", "Troca de equipamento"),
+        ("equipamento", "Troca de senha do Wi-Fi"),
+        ("alteracao_plano", "Alteração de Plano"),
         ("financeiro", "Financeiro"),
         ("outro", "Outro"),
     ]
@@ -179,6 +183,16 @@ class Chamado(models.Model):
     foto_inicio = models.ImageField(
         "Foto de início (obrigatória)", upload_to="chamados/inicio/%Y/%m/", null=True, blank=True
     )
+    atendimento_iniciado_lat = models.FloatField(null=True, blank=True, editable=False)
+    atendimento_iniciado_lng = models.FloatField(null=True, blank=True, editable=False)
+    atendimento_iniciado_precisao = models.FloatField(
+        null=True, blank=True, editable=False,
+        help_text="Margem de erro do GPS em metros, informada pelo navegador",
+    )
+    atendimento_iniciado_distancia_metros = models.FloatField(
+        null=True, blank=True, editable=False,
+        help_text="Distância entre onde o técnico estava e o endereço cadastrado do cliente, calculada no momento do início",
+    )
     concluido_em = models.DateTimeField(null=True, blank=True)
 
     eh_retorno = models.BooleanField(default=False)
@@ -196,6 +210,8 @@ class Chamado(models.Model):
 
     class Meta:
         ordering = ["-criado_em"]
+
+    DISTANCIA_ALERTA_METROS = 300
 
     def duracao_atendimento(self):
         inicio = self.atendimento_iniciado_em or self.pego_em
@@ -216,6 +232,25 @@ class Chamado(models.Model):
     def __str__(self):
         return f"#{self.id} - {self.cliente.nome}"
 
+    def distancia_suspeita(self):
+        """True se o técnico iniciou o atendimento longe demais do endereço cadastrado do cliente."""
+        if self.atendimento_iniciado_distancia_metros is None:
+            return False
+        return self.atendimento_iniciado_distancia_metros > self.DISTANCIA_ALERTA_METROS
+
+    def distancia_formatada(self):
+        d = self.atendimento_iniciado_distancia_metros
+        if d is None:
+            return None
+        if d >= 1000:
+            return f"{d / 1000:.1f} km".replace(".", ",")
+        return f"{int(round(d))} m"
+
+    def link_mapa_inicio(self):
+        if self.atendimento_iniciado_lat is None or self.atendimento_iniciado_lng is None:
+            return None
+        return f"https://www.google.com/maps?q={self.atendimento_iniciado_lat},{self.atendimento_iniciado_lng}"
+
 
 class ChamadoAnexo(models.Model):
     chamado = models.ForeignKey(Chamado, on_delete=models.CASCADE, related_name="anexos")
@@ -224,6 +259,26 @@ class ChamadoAnexo(models.Model):
 
     def __str__(self):
         return f"Anexo do chamado #{self.chamado_id}"
+
+
+class ChamadoDevolucao(models.Model):
+    """Registro de quando um técnico devolveu o chamado pra fila (ex: chegou e o
+    cliente não estava em casa), pra ficar guardado o motivo e quem devolveu."""
+
+    chamado = models.ForeignKey(Chamado, on_delete=models.CASCADE, related_name="devolucoes")
+    tecnico = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    motivo = models.TextField()
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+        verbose_name = "Devolução de chamado"
+        verbose_name_plural = "Devoluções de chamado"
+
+    def __str__(self):
+        return f"Devolução do chamado #{self.chamado_id} por {self.tecnico}"
 
 
 class MovimentacaoReceita(models.Model):
@@ -353,13 +408,6 @@ class LogAtividade(models.Model):
 # ESTOQUE DE MATERIAL
 # ---------------------------------------------------------------------------
 class Material(models.Model):
-    CATEGORIA_CHOICES = [
-        ("drop", "Bobina de Drop"),
-        ("utp", "Cabo UTP"),
-        ("conector", "Conector de Campo"),
-        ("fibra", "Fibra Óptica (AS)"),
-        ("outro", "Outro"),
-    ]
     UNIDADE_CHOICES = [
         ("un", "Unidade"),
         ("m", "Metros"),
@@ -368,7 +416,6 @@ class Material(models.Model):
     ]
 
     nome = models.CharField(max_length=150)
-    categoria = models.CharField(max_length=20, choices=CATEGORIA_CHOICES, default="outro")
     unidade_medida = models.CharField(max_length=10, choices=UNIDADE_CHOICES, default="un")
     estoque_minimo = models.DecimalField(
         max_digits=10, decimal_places=2, default=0,
@@ -378,7 +425,7 @@ class Material(models.Model):
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["categoria", "nome"]
+        ordering = ["nome"]
         verbose_name = "Material"
         verbose_name_plural = "Materiais (Estoque)"
 
@@ -411,7 +458,7 @@ class MovimentacaoEstoque(models.Model):
     quantidade = models.DecimalField(max_digits=10, decimal_places=2)
     tecnico = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
-        related_name="materiais_retirados", limit_choices_to={"role": "tecnico"},
+        related_name="materiais_retirados", limit_choices_to={"role__in": ["tecnico", "admin"]},
         help_text="Pra quem o material foi liberado (só faz sentido em Retirada)",
     )
     chamado = models.ForeignKey(
@@ -512,6 +559,9 @@ class RegistroPonto(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
     observacao = models.CharField(max_length=255, blank=True)
+    latitude = models.FloatField(null=True, blank=True, editable=False)
+    longitude = models.FloatField(null=True, blank=True, editable=False)
+    precisao_metros = models.FloatField(null=True, blank=True, editable=False)
 
     class Meta:
         ordering = ["-data_hora"]
@@ -520,6 +570,11 @@ class RegistroPonto(models.Model):
 
     def __str__(self):
         return f"{self.usuario} - {self.get_tipo_display()} em {self.data_hora.strftime('%d/%m/%Y %H:%M')}"
+
+    def link_mapa(self):
+        if self.latitude is None or self.longitude is None:
+            return None
+        return f"https://www.google.com/maps?q={self.latitude},{self.longitude}"
 
 
 class AbonoPonto(models.Model):

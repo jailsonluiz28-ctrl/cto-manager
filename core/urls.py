@@ -42,6 +42,7 @@ urlpatterns = [
     path("chamados-disponiveis/", views.chamados_disponiveis, name="chamados_disponiveis"),
     path("chamados-disponiveis/<int:pk>/pegar/", views.pegar_chamado, name="pegar_chamado"),
     path("meus-chamados/<int:pk>/avancar/", views.avancar_chamado, name="avancar_chamado"),
+    path("meus-chamados/<int:pk>/cliente-ausente/", views.chamado_cliente_ausente, name="chamado_cliente_ausente"),
     path("meus-chamados/<int:pk>/finalizar/", views.finalizar_chamado, name="finalizar_chamado"),
 
     path("financeiro/", views.financeiro, name="financeiro"),
@@ -63,6 +64,7 @@ urlpatterns = [
 
     path("relatorios/tecnicos/", views.relatorio_tecnicos, name="relatorio_tecnicos"),
     path("relatorios/", views.relatorios_view, name="relatorios"),
+    path("relatorios/pdf/", views.relatorios_pdf, name="relatorios_pdf"),
     path("backup/", views.backup_view, name="backup_view"),
     path("backup/criar/", views.backup_criar_agora, name="backup_criar_agora"),
     path("backup/baixar/<str:nome>/", views.backup_download, name="backup_download"),

@@ -27,8 +27,11 @@
         <div class="alert alert-warning small mb-3">Você está num chamado de volta (emergência). Quando terminar, bata a saída normalmente.</div>
         {% endif %}
         <p class="text-muted mb-3">Próximo registro:</p>
-        <form method="post">
+        <form method="post" id="form-ponto" onsubmit="return capturarLocalizacaoEEnviar(event, this)">
           {% csrf_token %}
+          <input type="hidden" name="latitude" id="ponto-lat">
+          <input type="hidden" name="longitude" id="ponto-lng">
+          <input type="hidden" name="precisao" id="ponto-precisao">
           <button type="submit" class="btn btn-lg {% if proximo == 'entrada' %}btn-success{% elif proximo == 'saida' %}btn-danger{% elif proximo == 'saida_almoco' %}btn-warning{% else %}btn-info{% endif %}">
             <i class="bi bi-clock-history"></i> Bater {{ proximo_label }}
           </button>
@@ -52,4 +55,25 @@
 <div class="mt-3">
   <a href="{% url 'ponto_meu_historico' %}" class="btn btn-outline-secondary"><i class="bi bi-calendar3"></i> Ver meu histórico</a>
 </div>
+
+<script>
+function capturarLocalizacaoEEnviar(evento, form) {
+  evento.preventDefault();
+  function enviar() { form.submit(); }
+  if (!navigator.geolocation) { enviar(); return false; }
+  const tempoLimite = setTimeout(enviar, 4000);
+  navigator.geolocation.getCurrentPosition(
+    function (pos) {
+      clearTimeout(tempoLimite);
+      form.querySelector("#ponto-lat").value = pos.coords.latitude;
+      form.querySelector("#ponto-lng").value = pos.coords.longitude;
+      form.querySelector("#ponto-precisao").value = pos.coords.accuracy;
+      enviar();
+    },
+    function () { clearTimeout(tempoLimite); enviar(); },
+    { enableHighAccuracy: true, timeout: 4000, maximumAge: 0 }
+  );
+  return false;
+}
+</script>
 {% endblock %}

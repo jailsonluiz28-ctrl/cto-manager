@@ -80,3 +80,34 @@ tr.linha-prioridade-alta, tr.linha-prioridade-alta > td { background-color: #dc2
 tr.linha-prioridade-media, tr.linha-prioridade-media > td { background-color: #f59e0b !important; color: #1f2937; }
 tr.linha-prioridade-baixa, tr.linha-prioridade-baixa > td { background-color: #16a34a !important; color: #fff; }
 tr.linha-prioridade-extrema .text-muted, tr.linha-prioridade-alta .text-muted, tr.linha-prioridade-baixa .text-muted { color: rgba(255,255,255,.85) !important; }
+
+/* Card de "Meus Chamados" (técnico) — layout com ícones por linha, divisor e botões empilhados */
+.chamado-status-pill {
+  background: #fff; color: #15803d; font-weight: 600; font-size: .78rem;
+  padding: .4rem .85rem; border-radius: 999px; display: inline-flex; align-items: center; gap: .4rem;
+  white-space: nowrap;
+}
+.chamado-status-pill.aberto { color: #b45309; }
+.chamado-status-pill i { font-size: .5rem; }
+.chamado-badge-prioridade {
+  background: #111827; color: #fff; font-size: .72rem; padding: .3rem .65rem; border-radius: 999px;
+  display: inline-flex; align-items: center; gap: .3rem; font-weight: 600;
+}
+.chamado-info-linha { display: flex; align-items: center; gap: .55rem; margin-bottom: .4rem; font-size: .92rem; }
+.chamado-info-linha i { width: 16px; text-align: center; opacity: .85; flex-shrink: 0; }
+.chamado-divisor { width: 1px; background: rgba(255,255,255,.4); align-self: stretch; }
+.chamado-botoes-col { min-width: 220px; }
+.chamado-btn {
+  border-radius: 12px; padding: .8rem 1.1rem; font-weight: 600; font-size: .95rem;
+  display: flex; align-items: center; gap: .6rem; justify-content: flex-start; border: none;
+  transition: filter .15s ease;
+}
+.chamado-btn:hover { filter: brightness(0.95); }
+.chamado-btn-concluir { background: #15803d; color: #fff; }
+.chamado-btn-concluir:hover { color: #fff; }
+.chamado-btn-iniciar, .chamado-btn-ausente { background: #fff !important; color: #000 !important; }
+.chamado-aviso-devolvido {
+  background: #fff; color: #000 !important; display: inline-block;
+  padding: .4rem .7rem; border-radius: 8px;
+}
+.chamado-btn-iniciar:hover, .chamado-btn-ausente:hover { color: #000 !important; }

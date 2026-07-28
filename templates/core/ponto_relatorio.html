@@ -34,10 +34,10 @@
       {% for d in r.dias %}
       <tr>
         <td>{{ d.data|date:"d/m/Y (D)" }}{% if d.liberado_mais_cedo %} <span class="badge bg-info text-dark">Liberado</span>{% endif %}{% if d.abono %} <span class="badge bg-primary" title="{{ d.abono.motivo }}">Abonado</span>{% endif %}</td>
-        <td>{% if d.registros.entrada %}{{ d.registros.entrada.data_hora|date:"H:i" }}{% else %}—{% endif %}</td>
-        <td>{% if d.registros.saida_almoco %}{{ d.registros.saida_almoco.data_hora|date:"H:i" }}{% else %}—{% endif %}</td>
-        <td>{% if d.registros.volta_almoco %}{{ d.registros.volta_almoco.data_hora|date:"H:i" }}{% else %}—{% endif %}</td>
-        <td>{% if d.registros.saida %}{{ d.registros.saida.data_hora|date:"H:i" }}{% else %}—{% endif %}</td>
+        <td>{% if d.registros.entrada %}{{ d.registros.entrada.data_hora|date:"H:i" }}{% if d.registros.entrada.link_mapa %} <a href="{{ d.registros.entrada.link_mapa }}" target="_blank" title="Ver localização no mapa"><i class="bi bi-geo-alt-fill text-primary"></i></a>{% endif %}{% else %}—{% endif %}</td>
+        <td>{% if d.registros.saida_almoco %}{{ d.registros.saida_almoco.data_hora|date:"H:i" }}{% if d.registros.saida_almoco.link_mapa %} <a href="{{ d.registros.saida_almoco.link_mapa }}" target="_blank" title="Ver localização no mapa"><i class="bi bi-geo-alt-fill text-primary"></i></a>{% endif %}{% else %}—{% endif %}</td>
+        <td>{% if d.registros.volta_almoco %}{{ d.registros.volta_almoco.data_hora|date:"H:i" }}{% if d.registros.volta_almoco.link_mapa %} <a href="{{ d.registros.volta_almoco.link_mapa }}" target="_blank" title="Ver localização no mapa"><i class="bi bi-geo-alt-fill text-primary"></i></a>{% endif %}{% else %}—{% endif %}</td>
+        <td>{% if d.registros.saida %}{{ d.registros.saida.data_hora|date:"H:i" }}{% if d.registros.saida.link_mapa %} <a href="{{ d.registros.saida.link_mapa }}" target="_blank" title="Ver localização no mapa"><i class="bi bi-geo-alt-fill text-primary"></i></a>{% endif %}{% else %}—{% endif %}</td>
         <td class="text-end">{% if d.horas_chamada_de_volta > 0 %}<span class="badge bg-warning text-dark">{{ d.horas_chamada_de_volta }}h</span>{% else %}—{% endif %}</td>
         <td class="text-end">{{ d.horas_trabalhadas }}h</td>
         <td class="text-end">{{ d.horas_esperadas }}h</td>

@@ -7,7 +7,7 @@
   <li class="nav-item"><a class="nav-link" href="{% url 'estoque_historico' %}">Histórico</a></li>
 </ul>
 <div class="card p-4" style="max-width:500px;">
-  <p class="text-muted small">Use aqui quando liberar material do estoque para um técnico usar em campo (ex: cortou 300m de fibra, entregou 4 conectores). O saldo é descontado automaticamente.</p>
+  <p class="text-muted small">Use aqui quando liberar material do estoque para um técnico (ou administrador) usar em campo (ex: cortou 300m de fibra, entregou 4 conectores). O saldo é descontado automaticamente.</p>
   <form method="post">
     {% csrf_token %}
     {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}

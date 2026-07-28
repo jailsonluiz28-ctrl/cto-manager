@@ -70,8 +70,8 @@ class LogAtividadeAdmin(admin.ModelAdmin):
 
 @admin.register(Material)
 class MaterialAdmin(admin.ModelAdmin):
-    list_display = ("nome", "categoria", "unidade_medida", "saldo_atual", "ativo")
-    list_filter = ("categoria", "ativo")
+    list_display = ("nome", "unidade_medida", "saldo_atual", "ativo")
+    list_filter = ("ativo",)
 
 
 @admin.register(MovimentacaoEstoque)

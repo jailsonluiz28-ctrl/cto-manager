@@ -31,6 +31,11 @@
       {% if c.eh_retorno %}
       <div class="small mt-1 fw-semibold" style="color:#fbbf24;"><i class="bi bi-exclamation-triangle"></i> Atendido anteriormente por: {{ c.tecnico_ultimo_atendimento|default:"não identificado" }}</div>
       {% endif %}
+      {% if c.devolucoes.all %}
+      <div class="small mt-1 fw-semibold chamado-aviso-devolvido" title="{% for d in c.devolucoes.all %}{{ d.criado_em|date:'d/m H:i' }} ({{ d.tecnico.get_full_name|default:d.tecnico.username }}): {{ d.motivo }}&#10;{% endfor %}">
+        <i class="bi bi-arrow-counterclockwise"></i> Já devolvido {{ c.devolucoes.all|length }}x — última vez: "{{ c.devolucoes.all.0.motivo|truncatechars:80 }}"
+      </div>
+      {% endif %}
     </div>
     <div>
       {% if c.tecnico_id is None %}

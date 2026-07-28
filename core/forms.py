@@ -200,7 +200,7 @@ class NegociarDebitoForm(BootstrapFormMixin, forms.Form):
 class MaterialForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Material
-        fields = ["nome", "categoria", "unidade_medida", "estoque_minimo", "ativo"]
+        fields = ["nome", "unidade_medida", "estoque_minimo", "ativo"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -221,7 +221,7 @@ class SaidaEstoqueForm(BootstrapFormMixin, forms.Form):
     material = forms.ModelChoiceField(label="Material", queryset=Material.objects.filter(ativo=True))
     quantidade = forms.DecimalField(label="Quantidade retirada", max_digits=10, decimal_places=2, min_value=0.01)
     tecnico = forms.ModelChoiceField(
-        label="Liberado para (técnico)", queryset=User.objects.filter(role="tecnico"), required=False,
+        label="Liberado para", queryset=User.objects.filter(role__in=["tecnico", "admin"]), required=True,
     )
     observacao = forms.CharField(label="Observação (opcional)", required=False)
 

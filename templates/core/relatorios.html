@@ -19,20 +19,25 @@
   <li class="nav-item"><a class="nav-link {% if aba_ativa == 'clientes' %}active{% endif %}" data-bs-toggle="pill" href="#clientes">Clientes</a></li>
   <li class="nav-item"><a class="nav-link {% if aba_ativa == 'crescimento' %}active{% endif %}" data-bs-toggle="pill" href="#crescimento">Financeiro / Crescimento</a></li>
   <li class="nav-item"><a class="nav-link {% if aba_ativa == 'tempo-atendimento' %}active{% endif %}" data-bs-toggle="pill" href="#tempo-atendimento">Tempo em Atendimento</a></li>
+  <li class="nav-item"><a class="nav-link {% if aba_ativa == 'estoque' %}active{% endif %}" data-bs-toggle="pill" href="#estoque">Estoque de Material</a></li>
+  <li class="nav-item"><a class="nav-link {% if aba_ativa == 'contas' %}active{% endif %}" data-bs-toggle="pill" href="#contas">Contas a Pagar</a></li>
 </ul>
 
 <div class="tab-content">
 
   {# ---------------- TÉCNICOS ---------------- #}
   <div class="tab-pane fade {% if aba_ativa == 'tecnicos' %}show active{% endif %}" id="tecnicos">
-    <form class="d-flex gap-2 mb-3" method="get">
-      <input type="hidden" name="mes" value="{{ mes }}"><input type="hidden" name="ano" value="{{ ano }}">
-      <input type="hidden" name="aba" value="tecnicos">
-      <select name="tecnico" class="form-select" style="max-width:220px;" onchange="this.form.submit()">
-        <option value="">Todos os técnicos</option>
-        {% for t in tecnicos_todos %}<option value="{{ t.id }}" {% if tecnico_filtro == t.id|stringformat:"s" %}selected{% endif %}>{{ t.get_full_name|default:t.username }}</option>{% endfor %}
-      </select>
-    </form>
+    <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+      <form class="d-flex gap-2" method="get">
+        <input type="hidden" name="mes" value="{{ mes }}"><input type="hidden" name="ano" value="{{ ano }}">
+        <input type="hidden" name="aba" value="tecnicos">
+        <select name="tecnico" class="form-select" style="max-width:220px;" onchange="this.form.submit()">
+          <option value="">Todos os técnicos</option>
+          {% for t in tecnicos_todos %}<option value="{{ t.id }}" {% if tecnico_filtro == t.id|stringformat:"s" %}selected{% endif %}>{{ t.get_full_name|default:t.username }}</option>{% endfor %}
+        </select>
+      </form>
+      <a class="btn btn-outline-primary" href="{% url 'relatorios_pdf' %}?mes={{ mes }}&ano={{ ano }}&aba=tecnicos&tecnico={{ tecnico_filtro }}"><i class="bi bi-file-earmark-pdf"></i> Baixar PDF</a>
+    </div>
     <div class="card">
       <table class="table mb-0 align-middle">
         <thead class="table-light"><tr><th>Técnico</th><th class="text-center">Concluídos no mês</th><th class="text-center">Em andamento (agora)</th><th class="text-center">Cancelados (total)</th><th class="text-center">Concluídos (histórico)</th></tr></thead>
@@ -54,14 +59,17 @@
 
   {# ---------------- OPERADORES ---------------- #}
   <div class="tab-pane fade {% if aba_ativa == 'operadores' %}show active{% endif %}" id="operadores">
-    <form class="d-flex gap-2 mb-3" method="get">
-      <input type="hidden" name="mes" value="{{ mes }}"><input type="hidden" name="ano" value="{{ ano }}">
-      <input type="hidden" name="aba" value="operadores">
-      <select name="operador" class="form-select" style="max-width:220px;" onchange="this.form.submit()">
-        <option value="">Todos os operadores</option>
-        {% for o in operadores_todos %}<option value="{{ o.id }}" {% if operador_filtro == o.id|stringformat:"s" %}selected{% endif %}>{{ o.get_full_name|default:o.username }}</option>{% endfor %}
-      </select>
-    </form>
+    <div class="d-flex justify-content-between align-items-start mb-1 flex-wrap gap-2">
+      <form class="d-flex gap-2" method="get">
+        <input type="hidden" name="mes" value="{{ mes }}"><input type="hidden" name="ano" value="{{ ano }}">
+        <input type="hidden" name="aba" value="operadores">
+        <select name="operador" class="form-select" style="max-width:220px;" onchange="this.form.submit()">
+          <option value="">Todos os operadores</option>
+          {% for o in operadores_todos %}<option value="{{ o.id }}" {% if operador_filtro == o.id|stringformat:"s" %}selected{% endif %}>{{ o.get_full_name|default:o.username }}</option>{% endfor %}
+        </select>
+      </form>
+      <a class="btn btn-outline-primary" href="{% url 'relatorios_pdf' %}?mes={{ mes }}&ano={{ ano }}&aba=operadores&operador={{ operador_filtro }}"><i class="bi bi-file-earmark-pdf"></i> Baixar PDF</a>
+    </div>
     <p class="text-muted small">Quantidade de chamados que cada operador (ou administrador) abriu em {{ mes_ref|date:"F/Y" }}.</p>
     <div class="card">
       <table class="table mb-0 align-middle">
@@ -78,6 +86,9 @@
 
   {# ---------------- CHAMADOS DO MÊS ---------------- #}
   <div class="tab-pane fade {% if aba_ativa == 'chamados' %}show active{% endif %}" id="chamados">
+    <div class="d-flex justify-content-end mb-2">
+      <a class="btn btn-outline-primary" href="{% url 'relatorios_pdf' %}?mes={{ mes }}&ano={{ ano }}&aba=chamados"><i class="bi bi-file-earmark-pdf"></i> Baixar PDF</a>
+    </div>
     <div class="row g-3 mb-3">
       <div class="col-md-4">
         <div class="kpi-card" style="background:#2563eb;"><div class="rotulo">Total de chamados em {{ mes_ref|date:"F/Y" }}</div><div class="valor">{{ total_chamados_mes }}</div></div>
@@ -114,6 +125,9 @@
 
   {# ---------------- CLIENTES ---------------- #}
   <div class="tab-pane fade {% if aba_ativa == 'clientes' %}show active{% endif %}" id="clientes">
+    <div class="d-flex justify-content-end mb-2">
+      <a class="btn btn-outline-primary" href="{% url 'relatorios_pdf' %}?mes={{ mes }}&ano={{ ano }}&aba=clientes"><i class="bi bi-file-earmark-pdf"></i> Baixar PDF</a>
+    </div>
     <div class="row g-3 mb-4">
       <div class="col-md-4 col-6"><div class="kpi-card" style="background:#059669;"><div class="rotulo">Novos clientes (instalação)</div><div class="valor">{{ novos_count }}</div></div></div>
       <div class="col-md-4 col-6"><div class="kpi-card" style="background:#dc2626;"><div class="rotulo">Cancelamentos</div><div class="valor">{{ cancelados_count }}</div></div></div>
@@ -140,6 +154,9 @@
 
   {# ---------------- FINANCEIRO / CRESCIMENTO ---------------- #}
   <div class="tab-pane fade {% if aba_ativa == 'crescimento' %}show active{% endif %}" id="crescimento">
+    <div class="d-flex justify-content-end mb-2">
+      <a class="btn btn-outline-primary" href="{% url 'relatorios_pdf' %}?mes={{ mes }}&ano={{ ano }}&aba=crescimento"><i class="bi bi-file-earmark-pdf"></i> Baixar PDF</a>
+    </div>
     <div class="row g-3 mb-4">
       <div class="col-md-3 col-6"><div class="kpi-card" style="background:#059669;"><div class="rotulo">Novos clientes (R$)</div><div class="valor">+R$ {{ receita_nova|floatformat:2 }}</div></div></div>
       <div class="col-md-3 col-6"><div class="kpi-card" style="background:#dc2626;"><div class="rotulo">Cancelamentos (R$)</div><div class="valor">-R$ {{ receita_perdida|floatformat:2 }}</div></div></div>
@@ -235,12 +252,156 @@
     </div>
   </div>
 
+  {# ---------------- ESTOQUE DE MATERIAL ---------------- #}
+  <div class="tab-pane fade {% if aba_ativa == 'estoque' %}show active{% endif %}" id="estoque">
+    <div class="d-flex justify-content-end mb-2">
+      <a class="btn btn-outline-primary" href="{% url 'relatorios_pdf' %}?mes={{ mes }}&ano={{ ano }}&aba=estoque"><i class="bi bi-file-earmark-pdf"></i> Baixar PDF</a>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <h6 class="text-muted mb-2">Materiais que mais saíram no mês</h6>
+        <div class="card mb-4">
+          <table class="table table-sm mb-0">
+            <thead class="table-light"><tr><th>#</th><th>Material</th><th class="text-end">Quantidade retirada</th></tr></thead>
+            <tbody>
+              {% for item in ranking_saidas_material %}
+              <tr>
+                <td class="text-muted">{{ forloop.counter }}</td>
+                <td>{{ item.material.nome }}</td>
+                <td class="text-end fw-semibold">{{ item.total_fmt }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="3" class="text-center text-muted py-3">Nenhuma retirada registrada nesse mês.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <h6 class="text-muted mb-2">Materiais mais comprados no mês</h6>
+        <div class="card mb-4">
+          <table class="table table-sm mb-0">
+            <thead class="table-light"><tr><th>#</th><th>Material</th><th class="text-end">Quantidade comprada</th></tr></thead>
+            <tbody>
+              {% for item in ranking_entradas_material %}
+              <tr>
+                <td class="text-muted">{{ forloop.counter }}</td>
+                <td>{{ item.material.nome }}</td>
+                <td class="text-end fw-semibold">{{ item.total_fmt }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="3" class="text-center text-muted py-3">Nenhuma compra registrada nesse mês.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <h6 class="text-muted mb-2">Quem mais retirou material (técnico ou administrador)</h6>
+    <div class="card">
+      <table class="table table-sm mb-0">
+        <thead class="table-light"><tr><th>#</th><th>Pessoa</th><th class="text-end">Retiradas no mês</th></tr></thead>
+        <tbody>
+          {% for item in ranking_retiradas_pessoa %}
+          <tr>
+            <td class="text-muted">{{ forloop.counter }}</td>
+            <td>{{ item.pessoa.get_full_name|default:item.pessoa.username }} <span class="badge bg-secondary">{{ item.pessoa.get_role_display }}</span></td>
+            <td class="text-end fw-semibold">{{ item.qtd }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3" class="text-center text-muted py-3">Nenhuma retirada registrada nesse mês.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ---------------- CONTAS A PAGAR ---------------- #}
+  <div class="tab-pane fade {% if aba_ativa == 'contas' %}show active{% endif %}" id="contas">
+    <div class="d-flex justify-content-end mb-2">
+      <a class="btn btn-outline-primary" href="{% url 'relatorios_pdf' %}?mes={{ mes }}&ano={{ ano }}&aba=contas"><i class="bi bi-file-earmark-pdf"></i> Baixar PDF</a>
+    </div>
+    <div class="row g-3 mb-3">
+      <div class="col-md-4 col-6">
+        <div class="kpi-card" style="background:#d97706;"><div class="rotulo">A pagar em {{ mes_ref|date:"F/Y" }}</div><div class="valor">R$ {{ total_pagar_mes|floatformat:2 }}</div></div>
+      </div>
+      <div class="col-md-4 col-6">
+        <div class="kpi-card" style="background:#059669;"><div class="rotulo">Já pago em {{ mes_ref|date:"F/Y" }}</div><div class="valor">R$ {{ total_pago_mes|floatformat:2 }}</div></div>
+      </div>
+      <div class="col-md-4 col-6">
+        <div class="kpi-card" style="background:#64748b;"><div class="rotulo">Débitos congelados (total)</div><div class="valor">R$ {{ total_congelado|floatformat:2 }}</div></div>
+      </div>
+    </div>
+
+    <h6 class="text-muted mb-2">Contas do mês</h6>
+    <div class="card mb-4">
+      <table class="table mb-0 align-middle">
+        <thead class="table-light"><tr><th>Descrição</th><th>Vencimento</th><th>Status</th><th class="text-end">Valor</th></tr></thead>
+        <tbody>
+          {% for c in contas_pagar_mes %}
+          <tr>
+            <td>
+              {{ c.descricao }}
+              {% if c.recorrente %}<span class="badge bg-info text-dark ms-1" title="Repete todo mês">Fixo mensal</span>{% endif %}
+              {% if c.total_parcelas > 1 %}<span class="badge bg-secondary ms-1">{{ c.parcela_atual }}/{{ c.total_parcelas }}</span>{% endif %}
+            </td>
+            <td>{{ c.vencimento|date:"d/m/Y" }}</td>
+            <td>
+              {% if c.status == "pago" %}<span class="badge bg-success">Pago</span>
+              {% elif c.status == "agendado" %}<span class="badge bg-info text-dark">Agendado</span>
+              {% else %}<span class="badge bg-warning text-dark">Pendente</span>{% endif %}
+            </td>
+            <td class="text-end fw-semibold">R$ {{ c.valor|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="text-center text-muted py-4">Nenhuma conta nesse mês.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h6 class="text-muted mb-2">Débitos Congelados <span class="text-muted small">(fora do somatório até negociar)</span></h6>
+    <div class="card mb-4">
+      <table class="table mb-0 align-middle">
+        <thead class="table-light"><tr><th>Descrição</th><th class="text-end">Valor</th></tr></thead>
+        <tbody>
+          {% for d in debitos_congelados_lista %}
+          <tr><td>{{ d.descricao }}</td><td class="text-end fw-semibold">R$ {{ d.valor|floatformat:2 }}</td></tr>
+          {% empty %}
+          <tr><td colspan="2" class="text-center text-muted py-4">Nenhum débito congelado no momento.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h6 class="text-muted mb-2">Contas Pagas <span class="text-muted small">(quitadas por completo — total: R$ {{ total_contas_pagas|floatformat:2 }})</span></h6>
+    <div class="card">
+      <table class="table mb-0 align-middle">
+        <thead class="table-light"><tr><th>Descrição</th><th class="text-center">Parcelas</th><th class="text-end">Total pago</th><th>Último vencimento</th></tr></thead>
+        <tbody>
+          {% for r in contas_pagas_lista %}
+          <tr>
+            <td>{{ r.descricao }}</td>
+            <td class="text-center">{{ r.total_parcelas }}</td>
+            <td class="text-end fw-semibold">R$ {{ r.total_pago|floatformat:2 }}</td>
+            <td>{{ r.ultimo_vencimento|date:"d/m/Y" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="text-center text-muted py-4">Nenhuma conta quitada por completo ainda.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script>
 function submitFormMesRel() {
-  const painelAtivo = document.querySelector("#tempo-atendimento.tab-pane.show.active, #tecnicos.tab-pane.show.active, #operadores.tab-pane.show.active, #chamados.tab-pane.show.active, #clientes.tab-pane.show.active, #crescimento.tab-pane.show.active");
+  const painelAtivo = document.querySelector("#tempo-atendimento.tab-pane.show.active, #tecnicos.tab-pane.show.active, #operadores.tab-pane.show.active, #chamados.tab-pane.show.active, #clientes.tab-pane.show.active, #crescimento.tab-pane.show.active, #estoque.tab-pane.show.active, #contas.tab-pane.show.active");
   document.getElementById("aba-input-mes").value = painelAtivo ? painelAtivo.id : "tecnicos";
   document.getElementById("form-mes-rel").submit();
 }

@@ -151,3 +151,48 @@ def resumo_ponto_dia(usuario, data):
         "abono": abono,
         "completo": (todos and todos[-1].tipo == "saida") or horas_esperadas == 0,
     }
+
+
+# ---------------------------------------------------------------------------
+# Geolocalização: geocodificar endereço do cliente e calcular distância
+# ---------------------------------------------------------------------------
+
+def geocodificar_cliente(cliente):
+    """Descobre a latitude/longitude do endereço cadastrado do cliente, usando o
+    serviço gratuito Nominatim (OpenStreetMap), e grava direto no banco.
+    Nunca levanta erro: se não tiver internet, endereço não for encontrado, ou
+    qualquer outro problema, simplesmente não define coordenadas — o cadastro
+    do cliente nunca trava por causa disso."""
+    import requests
+
+    partes = [cliente.logradouro, cliente.numero, cliente.bairro, cliente.cidade, cliente.estado]
+    endereco = ", ".join(p for p in partes if p)
+    if not endereco or not cliente.cidade:
+        return
+    try:
+        resposta = requests.get(
+            "https://nominatim.openstreetmap.org/search",
+            params={"q": f"{endereco}, Brasil", "format": "json", "limit": 1, "countrycodes": "br"},
+            headers={"User-Agent": "CTOManagerPro/1.0 (sistema interno de provedor de internet)"},
+            timeout=5,
+        )
+        resultados = resposta.json()
+        if resultados:
+            lat = float(resultados[0]["lat"])
+            lon = float(resultados[0]["lon"])
+            type(cliente).objects.filter(pk=cliente.pk).update(latitude=lat, longitude=lon)
+            cliente.latitude, cliente.longitude = lat, lon
+    except Exception:
+        pass
+
+
+def distancia_metros(lat1, lon1, lat2, lon2):
+    """Distância em linha reta (metros) entre duas coordenadas, pela fórmula de Haversine."""
+    from math import radians, sin, cos, sqrt, atan2
+
+    raio_terra = 6371000
+    phi1, phi2 = radians(lat1), radians(lat2)
+    dphi = radians(lat2 - lat1)
+    dlambda = radians(lon2 - lon1)
+    a = sin(dphi / 2) ** 2 + cos(phi1) * cos(phi2) * sin(dlambda / 2) ** 2
+    return 2 * raio_terra * atan2(sqrt(a), sqrt(1 - a))

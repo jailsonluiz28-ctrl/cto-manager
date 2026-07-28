@@ -32,6 +32,8 @@
         <td class="text-muted small">
           {{ c.atendimento_iniciado_em|date:"d/m H:i"|default:"—" }}
           {% if c.foto_inicio %}<a href="{{ c.foto_inicio.url }}" target="_blank" title="Ver foto de chegada"><i class="bi bi-camera-fill ms-1"></i></a>{% endif %}
+          {% if c.link_mapa_inicio %}<a href="{{ c.link_mapa_inicio }}" target="_blank" title="Ver localização no mapa"><i class="bi bi-geo-alt-fill ms-1 text-primary"></i></a>{% endif %}
+          {% if c.distancia_suspeita %}<span class="badge bg-danger ms-1" title="Distância do endereço do cliente">⚠ {{ c.distancia_formatada }}</span>{% endif %}
         </td>
         <td class="text-muted small">{{ c.concluido_em|date:"d/m H:i"|default:"—" }}</td>
         <td><span class="badge bg-success-subtle text-success">{{ c.duracao_formatada }}</span></td>

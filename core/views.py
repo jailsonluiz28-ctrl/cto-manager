@@ -25,12 +25,12 @@ from django.views.generic import ListView, CreateView, UpdateView, DetailView
 
 from django.db.models import Sum, Q
 
-from .models import Plano, CTO, Cliente, Chamado, ContaPagar, ChamadoAnexo, LogAtividade, Pagamento, MovimentacaoReceita, DebitoCongelado, Material, MovimentacaoEstoque, JornadaTrabalho, RegistroPonto, AbonoPonto, LiberacaoExtraPonto
+from .models import Plano, CTO, Cliente, Chamado, ContaPagar, ChamadoAnexo, ChamadoDevolucao, LogAtividade, Pagamento, MovimentacaoReceita, DebitoCongelado, Material, MovimentacaoEstoque, JornadaTrabalho, RegistroPonto, AbonoPonto, LiberacaoExtraPonto
 from .forms import ClienteForm, ChamadoForm, ContaPagarForm, CTOForm, PlanoForm, UsuarioCreateForm, UsuarioUpdateForm, DebitoCongeladoForm, NegociarDebitoForm, MaterialForm, EntradaEstoqueForm, SaidaEstoqueForm, JornadaForm, PontoLiberarForm, AbonoForm, LiberacaoExtraForm
 from .decorators import somente_operacao, somente_admin
 from .mixins import SomenteAdminMixin, SomenteOperacaoMixin
 from django.contrib.auth.models import Group, Permission
-from .utils import normalizar, rotulo_permissao, MODELO_LABELS, ACAO_LABELS, proximo_tipo_ponto, tem_entrada_hoje, resumo_ponto_dia
+from .utils import normalizar, rotulo_permissao, MODELO_LABELS, ACAO_LABELS, proximo_tipo_ponto, tem_entrada_hoje, resumo_ponto_dia, geocodificar_cliente, distancia_metros, formatar_quantidade_material
 from accounts.models import User
 
 
@@ -144,6 +144,7 @@ class ClienteCreateView(SomenteOperacaoMixin, CreateView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
+        geocodificar_cliente(self.object)
         MovimentacaoReceita.objects.create(
             cliente=self.object, tipo="novo_cliente",
             valor_anterior=0, valor_novo=self.object.valor_mensal(),
@@ -163,8 +164,19 @@ class ClienteUpdateView(SomenteOperacaoMixin, UpdateView):
         cliente_antigo = Cliente.objects.get(pk=self.object.pk)
         valor_antigo = cliente_antigo.valor_mensal()
         plano_antigo_id = cliente_antigo.plano_id
+        endereco_antigo = (
+            cliente_antigo.cep, cliente_antigo.logradouro, cliente_antigo.numero,
+            cliente_antigo.bairro, cliente_antigo.cidade, cliente_antigo.estado,
+        )
 
         response = super().form_valid(form)
+
+        endereco_novo = (
+            self.object.cep, self.object.logradouro, self.object.numero,
+            self.object.bairro, self.object.cidade, self.object.estado,
+        )
+        if endereco_novo != endereco_antigo:
+            geocodificar_cliente(self.object)
 
         valor_novo = self.object.valor_mensal()
         if self.object.plano_id != plano_antigo_id and valor_novo != valor_antigo:
@@ -724,6 +736,7 @@ def chamados_disponiveis(request):
         Chamado.objects.filter(status__in=["aberto", "andamento"])
         .exclude(status="cancelado")
         .select_related("cliente", "tecnico")
+        .prefetch_related("devolucoes")
     )
     return render(request, "core/chamados_disponiveis.html", {"chamados": chamados})
 
@@ -770,11 +783,69 @@ def avancar_chamado(request, pk):
         chamado.foto_inicio = foto
         chamado.atendimento_iniciado_em = timezone.now()
         chamado.status = "andamento"
+
+        lat = request.POST.get("latitude")
+        lng = request.POST.get("longitude")
+        precisao = request.POST.get("precisao")
+        try:
+            lat = float(lat) if lat else None
+            lng = float(lng) if lng else None
+            precisao = float(precisao) if precisao else None
+        except ValueError:
+            lat = lng = precisao = None
+        chamado.atendimento_iniciado_lat = lat
+        chamado.atendimento_iniciado_lng = lng
+        chamado.atendimento_iniciado_precisao = precisao
+
+        cliente = chamado.cliente
+        if lat is not None and lng is not None and cliente.latitude is not None and cliente.longitude is not None:
+            chamado.atendimento_iniciado_distancia_metros = distancia_metros(lat, lng, cliente.latitude, cliente.longitude)
+
         chamado.save()
-        messages.success(request, f"Atendimento iniciado às {timezone.localtime().strftime('%H:%M')}.")
+
+        if chamado.distancia_suspeita():
+            messages.warning(
+                request,
+                f"Atendimento iniciado, mas você está a {chamado.distancia_formatada()} do endereço cadastrado do cliente. "
+                "Confira se o endereço do cliente está certo, ou se você está no lugar certo.",
+            )
+        else:
+            messages.success(request, f"Atendimento iniciado às {timezone.localtime().strftime('%H:%M')}.")
         return redirect("meus_chamados")
 
     return render(request, "core/chamado_iniciar.html", {"chamado": chamado})
+
+
+@login_required
+def chamado_cliente_ausente(request, pk):
+    """Técnico chegou no endereço mas não conseguiu atender (cliente ausente, não
+    atendeu, endereço errado, etc). Registra o motivo e devolve o chamado pra fila
+    de Chamados Disponíveis, do zero (perde a foto/horário/localização de início
+    dessa tentativa, já que o atendimento não aconteceu de fato)."""
+    chamado = get_object_or_404(Chamado, pk=pk, tecnico=request.user)
+    if request.method == "POST":
+        motivo = request.POST.get("motivo", "").strip()
+        if not motivo:
+            messages.error(request, "Descreva o motivo antes de devolver o chamado.")
+            return redirect("meus_chamados")
+
+        ChamadoDevolucao.objects.create(chamado=chamado, tecnico=request.user, motivo=motivo)
+
+        if chamado.foto_inicio:
+            chamado.foto_inicio.delete(save=False)
+        chamado.status = "aberto"
+        chamado.tecnico = None
+        chamado.pego_em = None
+        chamado.atendimento_iniciado_em = None
+        chamado.foto_inicio = None
+        chamado.atendimento_iniciado_lat = None
+        chamado.atendimento_iniciado_lng = None
+        chamado.atendimento_iniciado_precisao = None
+        chamado.atendimento_iniciado_distancia_metros = None
+        chamado.save()
+
+        messages.warning(request, f"Chamado #{chamado.id} devolvido pra fila de Chamados Disponíveis.")
+    return redirect("meus_chamados")
 
 
 @login_required
@@ -1388,15 +1459,14 @@ def backup_upload_restaurar(request):
     return redirect("backup_view")
 
 
-@user_passes_test(lambda u: u.is_authenticated and u.role == "admin")
-def relatorios_view(request):
+def _dados_relatorios(request):
     hoje = timezone.now().date()
     ano = int(request.GET.get("ano", hoje.year))
     mes = int(request.GET.get("mes", hoje.month))
     tecnico_filtro = request.GET.get("tecnico", "")
     operador_filtro = request.GET.get("operador", "")
     tecnico_tempo_filtro = request.GET.get("tecnico_tempo", "")
-    abas_validas = {"tecnicos", "operadores", "chamados", "clientes", "crescimento", "tempo-atendimento"}
+    abas_validas = {"tecnicos", "operadores", "chamados", "clientes", "crescimento", "tempo-atendimento", "estoque", "contas"}
     aba_ativa = request.GET.get("aba", "tecnicos")
     if aba_ativa not in abas_validas:
         aba_ativa = "tecnicos"
@@ -1487,6 +1557,64 @@ def relatorios_view(request):
     # --- 6. Tempo em atendimento: quanto tempo cada técnico ficou na casa do cliente ---
     dados_tempo = _calcular_tempo_atendimento(ano, mes, tecnico_tempo_filtro)
 
+    # --- 7. Estoque de Material: o que mais saiu/comprou e quem mais retirou no mês ---
+    movs_mes = (
+        MovimentacaoEstoque.objects.filter(criado_em__year=ano, criado_em__month=mes)
+        .select_related("material", "tecnico")
+    )
+    saidas_por_material = {}
+    entradas_por_material = {}
+    retiradas_por_pessoa = {}
+    for mv in movs_mes:
+        if mv.tipo == "saida":
+            item = saidas_por_material.setdefault(mv.material_id, {"material": mv.material, "total": 0})
+            item["total"] += mv.quantidade
+            if mv.tecnico:
+                pessoa = retiradas_por_pessoa.setdefault(mv.tecnico_id, {"pessoa": mv.tecnico, "qtd": 0})
+                pessoa["qtd"] += 1
+        else:
+            item = entradas_por_material.setdefault(mv.material_id, {"material": mv.material, "total": 0})
+            item["total"] += mv.quantidade
+
+    ranking_saidas_material = sorted(saidas_por_material.values(), key=lambda x: x["total"], reverse=True)
+    for item in ranking_saidas_material:
+        item["total_fmt"] = formatar_quantidade_material(
+            item["total"], item["material"].unidade_medida, item["material"].get_unidade_medida_display()
+        )
+
+    ranking_entradas_material = sorted(entradas_por_material.values(), key=lambda x: x["total"], reverse=True)
+    for item in ranking_entradas_material:
+        item["total_fmt"] = formatar_quantidade_material(
+            item["total"], item["material"].unidade_medida, item["material"].get_unidade_medida_display()
+        )
+
+    ranking_retiradas_pessoa = sorted(retiradas_por_pessoa.values(), key=lambda x: x["qtd"], reverse=True)
+
+    # --- 8. Contas a Pagar do mês (+ Débitos Congelados e Contas Pagas) ---
+    garantir_contas_recorrentes(ano, mes)
+    contas_pagar_bruto = ContaPagar.objects.filter(vencimento__year=ano, vencimento__month=mes)
+    contas_pagar_mes = [c for c in contas_pagar_bruto if not _serie_completa_paga(c)]
+    total_pagar_mes = sum((c.valor for c in contas_pagar_mes if c.status != "pago"), 0)
+    total_pago_mes = sum((c.valor for c in contas_pagar_mes if c.status == "pago"), 0)
+
+    debitos_congelados_lista = DebitoCongelado.objects.filter(negociado=False)
+    total_congelado = sum((d.valor for d in debitos_congelados_lista), 0)
+
+    contas_pagas_lista = []
+    raizes_pagas = ContaPagar.objects.filter(gerada_de__isnull=True, recorrente=False)
+    for raiz in raizes_pagas:
+        serie = ContaPagar.objects.filter(Q(pk=raiz.pk) | Q(gerada_de=raiz))
+        if serie.count() >= raiz.total_parcelas and not serie.exclude(status="pago").exists():
+            ultima = serie.order_by("-vencimento").first()
+            contas_pagas_lista.append({
+                "descricao": raiz.descricao,
+                "total_parcelas": raiz.total_parcelas,
+                "total_pago": sum((c.valor for c in serie), 0),
+                "ultimo_vencimento": ultima.vencimento,
+            })
+    contas_pagas_lista.sort(key=lambda r: r["ultimo_vencimento"], reverse=True)
+    total_contas_pagas = sum((r["total_pago"] for r in contas_pagas_lista), 0)
+
     context = {
         "mes": mes, "ano": ano, "mes_ref": date(ano, mes, 1),
         "meses_opcoes": [(i, MESES_PT[i]) for i in range(1, 13)],
@@ -1517,8 +1645,166 @@ def relatorios_view(request):
         "detalhado_tempo": dados_tempo["detalhado"],
         "total_geral_tempo_fmt": dados_tempo["total_geral_fmt"],
         "total_chamados_tempo": dados_tempo["total_chamados"],
+        "ranking_saidas_material": ranking_saidas_material,
+        "ranking_entradas_material": ranking_entradas_material,
+        "ranking_retiradas_pessoa": ranking_retiradas_pessoa,
+        "contas_pagar_mes": contas_pagar_mes,
+        "total_pagar_mes": total_pagar_mes,
+        "total_pago_mes": total_pago_mes,
+        "debitos_congelados_lista": debitos_congelados_lista,
+        "total_congelado": total_congelado,
+        "contas_pagas_lista": contas_pagas_lista,
+        "total_contas_pagas": total_contas_pagas,
     }
+    return context
+
+
+@user_passes_test(lambda u: u.is_authenticated and u.role == "admin")
+def relatorios_view(request):
+    context = _dados_relatorios(request)
     return render(request, "core/relatorios.html", context)
+
+
+@user_passes_test(lambda u: u.is_authenticated and u.role == "admin")
+def relatorios_pdf(request):
+    """Gera o PDF da aba do hub de Relatórios que estiver ativa no momento
+    (Técnicos, Operadores, Chamados do Mês, Clientes, Financeiro/Crescimento
+    ou Estoque de Material — Tempo em Atendimento já tem seu PDF próprio)."""
+    dados = _dados_relatorios(request)
+    aba = dados["aba_ativa"]
+    titulo_periodo = f"{MESES_PT[dados['mes']]}/{dados['ano']}"
+
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="relatorio_{aba}_{dados["ano"]}_{dados["mes"]:02d}.pdf"'
+    doc = SimpleDocTemplate(response, pagesize=landscape(A4), topMargin=1.5 * cm, bottomMargin=1.5 * cm)
+    estilos = getSampleStyleSheet()
+    elementos = []
+
+    def titulo(texto):
+        elementos.append(Paragraph(texto, estilos["Title"]))
+        elementos.append(Spacer(1, 12))
+
+    def subtitulo(texto):
+        elementos.append(Paragraph(texto, estilos["Heading2"]))
+
+    def tabela(dados_linhas):
+        t = Table(dados_linhas, repeatRows=1)
+        t.setStyle(_estilo_tabela_pdf())
+        elementos.append(t)
+        elementos.append(Spacer(1, 16))
+
+    if aba == "tecnicos":
+        titulo(f"Relatório de Técnicos - {titulo_periodo}")
+        linhas = [["Técnico", "Concluídos no mês", "Em andamento (agora)", "Cancelados (total)", "Concluídos (histórico)"]]
+        for d in dados["dados_tecnicos"]:
+            linhas.append([
+                d["pessoa"].get_full_name() or d["pessoa"].username,
+                str(d["concluidos_mes"]), str(d["em_andamento"]), str(d["cancelados"]), str(d["concluidos_total"]),
+            ])
+        tabela(linhas)
+
+    elif aba == "operadores":
+        titulo(f"Relatório de Operadores - {titulo_periodo}")
+        linhas = [["Operador", "Chamados abertos no mês"]]
+        for d in dados["dados_operadores"]:
+            linhas.append([d["pessoa"].get_full_name() or d["pessoa"].username, str(d["chamados_abertos"])])
+        tabela(linhas)
+
+    elif aba == "chamados":
+        titulo(f"Relatório de Chamados do Mês - {titulo_periodo}")
+        elementos.append(Paragraph(f"Total de chamados: {dados['total_chamados_mes']}", estilos["Normal"]))
+        elementos.append(Spacer(1, 10))
+        subtitulo("Por tipo")
+        tabela([["Tipo", "Quantidade"]] + [[p["rotulo"], str(p["qtd"])] for p in dados["por_tipo"]])
+        subtitulo("Por status")
+        tabela([["Status", "Quantidade"]] + [[p["rotulo"], str(p["qtd"])] for p in dados["por_status"]])
+        subtitulo("Meses com mais chamados (histórico)")
+        tabela([["Mês", "Chamados"]] + [[r["mes_ano"], str(r["qtd"])] for r in dados["ranking_meses"]])
+
+    elif aba == "clientes":
+        titulo(f"Relatório de Clientes - {titulo_periodo}")
+        tabela([
+            ["Indicador", "Quantidade"],
+            ["Novos clientes (instalações)", str(dados["novos_count"])],
+            ["Cancelamentos", str(dados["cancelados_count"])],
+            ["Retornos (chamado repetido <30 dias)", str(dados["retornos_count"])],
+        ])
+        if dados["retornos_lista"]:
+            subtitulo("Detalhe dos retornos")
+            linhas = [["Cliente", "Atendido anteriormente por"]]
+            for c in dados["retornos_lista"]:
+                linhas.append([c.cliente.nome, c.tecnico_ultimo_atendimento.get_full_name() if c.tecnico_ultimo_atendimento else "não identificado"])
+            tabela(linhas)
+
+    elif aba == "crescimento":
+        titulo(f"Relatório Financeiro / Crescimento - {titulo_periodo}")
+        tabela([
+            ["Indicador", "Valor"],
+            ["Novos clientes (R$)", f"+R$ {dados['receita_nova']:.2f}"],
+            ["Cancelamentos (R$)", f"-R$ {dados['receita_perdida']:.2f}"],
+            ["Upgrade/Downgrade", f"R$ {dados['ajuste_planos']:.2f}"],
+            ["Saldo do mês", f"R$ {dados['saldo_mes']:.2f} ({dados['percentual_saldo']:.1f}%)"],
+        ])
+        subtitulo("Tendência dos últimos 12 meses")
+        tabela([["Mês", "Saldo (R$)"]] + [[t["mes_ano"], f"R$ {t['saldo']:.2f}"] for t in dados["tendencia"]])
+
+    elif aba == "estoque":
+        titulo(f"Relatório de Estoque de Material - {titulo_periodo}")
+        subtitulo("Materiais que mais saíram no mês")
+        linhas = [["#", "Material", "Quantidade retirada"]]
+        for i, item in enumerate(dados["ranking_saidas_material"], 1):
+            linhas.append([str(i), item["material"].nome, item["total_fmt"]])
+        tabela(linhas)
+        subtitulo("Materiais mais comprados no mês")
+        linhas = [["#", "Material", "Quantidade comprada"]]
+        for i, item in enumerate(dados["ranking_entradas_material"], 1):
+            linhas.append([str(i), item["material"].nome, item["total_fmt"]])
+        tabela(linhas)
+        subtitulo("Quem mais retirou material")
+        linhas = [["#", "Pessoa", "Retiradas no mês"]]
+        for i, item in enumerate(dados["ranking_retiradas_pessoa"], 1):
+            linhas.append([str(i), item["pessoa"].get_full_name() or item["pessoa"].username, str(item["qtd"])])
+        tabela(linhas)
+
+    elif aba == "contas":
+        titulo(f"Relatório de Contas a Pagar - {titulo_periodo}")
+        tabela([
+            ["Indicador", "Valor"],
+            ["A pagar no mês", f"R$ {dados['total_pagar_mes']:.2f}"],
+            ["Já pago no mês", f"R$ {dados['total_pago_mes']:.2f}"],
+        ])
+        subtitulo("Contas do mês")
+        linhas = [["Descrição", "Vencimento", "Status", "Valor"]]
+        for c in dados["contas_pagar_mes"]:
+            descricao = c.descricao
+            if c.recorrente:
+                descricao += " (Fixo mensal)"
+            elif c.total_parcelas > 1:
+                descricao += f" ({c.parcela_atual}/{c.total_parcelas})"
+            linhas.append([descricao, c.vencimento.strftime("%d/%m/%Y"), c.get_status_display(), f"R$ {c.valor:.2f}"])
+        tabela(linhas)
+
+        subtitulo(f"Débitos Congelados (total: R$ {dados['total_congelado']:.2f})")
+        linhas = [["Descrição", "Valor"]]
+        for d in dados["debitos_congelados_lista"]:
+            linhas.append([d.descricao, f"R$ {d.valor:.2f}"])
+        if len(linhas) == 1:
+            linhas.append(["Nenhum débito congelado no momento.", "—"])
+        tabela(linhas)
+
+        subtitulo(f"Contas Pagas — quitadas por completo (total: R$ {dados['total_contas_pagas']:.2f})")
+        linhas = [["Descrição", "Parcelas", "Total pago", "Último vencimento"]]
+        for r in dados["contas_pagas_lista"]:
+            linhas.append([r["descricao"], str(r["total_parcelas"]), f"R$ {r['total_pago']:.2f}", r["ultimo_vencimento"].strftime("%d/%m/%Y")])
+        if len(linhas) == 1:
+            linhas.append(["Nenhuma conta quitada por completo ainda.", "—", "—", "—"])
+        tabela(linhas)
+
+    else:
+        titulo(f"Relatório - {titulo_periodo}")
+
+    doc.build(elementos)
+    return response
 
 
 # ---------------------------------------------------------------------------
@@ -1751,10 +2037,26 @@ def ponto_bater(request):
         if proximo == "entrada":
             eh_chamada = LiberacaoExtraPonto.objects.filter(usuario=request.user, data=hoje, usada=False).exists()
             LiberacaoExtraPonto.objects.filter(usuario=request.user, data=hoje, usada=False).update(usada=True)
+
+        lat = request.POST.get("latitude")
+        lng = request.POST.get("longitude")
+        precisao = request.POST.get("precisao")
+        try:
+            lat = float(lat) if lat else None
+            lng = float(lng) if lng else None
+            precisao = float(precisao) if precisao else None
+        except ValueError:
+            lat = lng = precisao = None
+
         RegistroPonto.objects.create(
-            usuario=request.user, tipo=proximo, data_hora=timezone.now(), eh_chamada_de_volta=eh_chamada
+            usuario=request.user, tipo=proximo, data_hora=timezone.now(), eh_chamada_de_volta=eh_chamada,
+            latitude=lat, longitude=lng, precisao_metros=precisao,
         )
         messages.success(request, f"Ponto registrado: {dict(RegistroPonto.TIPO_CHOICES)[proximo]} às {timezone.localtime().strftime('%H:%M')}.")
+        if proximo == "entrada" and request.user.role == "tecnico":
+            return redirect("chamados_disponiveis")
+        if proximo == "entrada" and request.user.role == "operador":
+            return redirect("dashboard")
         return redirect("ponto_bater")
 
     resumo = resumo_ponto_dia(request.user, hoje)
