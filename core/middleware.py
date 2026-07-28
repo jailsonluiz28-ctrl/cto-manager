@@ -27,7 +27,7 @@ class PontoObrigatorioMiddleware:
     travados de novo até baterem o ponto no dia seguinte. O Administrador nunca
     é afetado por essa trava."""
 
-    CAMINHOS_LIBERADOS = ("/ponto/", "/logout/", "/sw.js", "/static/", "/media/")
+    CAMINHOS_LIBERADOS = ("/ponto/", "/logout/", "/sw.js", "/static/", "/media/", "/portal/")
 
     def __init__(self, get_response):
         self.get_response = get_response

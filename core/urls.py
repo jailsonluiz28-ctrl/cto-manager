@@ -1,8 +1,28 @@
 from django.urls import path
 from . import views
+from . import portal_views
 
 urlpatterns = [
     path("", views.dashboard, name="dashboard"),
+
+    # ---- Portal do Cliente (área pública) ----
+    path("portal/", portal_views.portal_login, name="portal_login"),
+    path("portal/sair/", portal_views.portal_logout, name="portal_logout"),
+    path("portal/primeiro-acesso/", portal_views.portal_primeiro_acesso, name="portal_primeiro_acesso"),
+    path("portal/esqueci-senha/", portal_views.portal_esqueci_senha, name="portal_esqueci_senha"),
+    path("portal/definir-senha/", portal_views.portal_definir_senha, name="portal_definir_senha"),
+    path("portal/inicio/", portal_views.portal_dashboard, name="portal_dashboard"),
+    path("portal/fatura/pdf/", portal_views.portal_segunda_via_pdf, name="portal_segunda_via_pdf"),
+    path("portal/pedir-liberacao/", portal_views.portal_pedir_liberacao, name="portal_pedir_liberacao"),
+
+    # ---- Administração do Portal (Promoções e Configuração) — só Admin ----
+    path("promocoes/", portal_views.promocao_list, name="promocao_list"),
+    path("promocoes/nova/", portal_views.promocao_create, name="promocao_create"),
+    path("promocoes/<int:pk>/ativar-desativar/", portal_views.promocao_toggle, name="promocao_toggle"),
+    path("promocoes/<int:pk>/excluir/", portal_views.promocao_delete, name="promocao_delete"),
+    path("portal/configuracao/", portal_views.configuracao_empresa_editar, name="configuracao_empresa_editar"),
+    path("portal/solicitacoes-liberacao/", portal_views.solicitacao_liberacao_list, name="solicitacao_liberacao_list"),
+    path("portal/solicitacoes-liberacao/<int:pk>/atender/", portal_views.solicitacao_liberacao_atender, name="solicitacao_liberacao_atender"),
 
     path("clientes/", views.ClienteListView.as_view(), name="cliente_list"),
     path("clientes/buscar-json/", views.cliente_busca_json, name="cliente_busca_json"),

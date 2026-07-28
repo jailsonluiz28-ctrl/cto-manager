@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block titulo %}Promoções (Portal do Cliente){% endblock %}
+{% block conteudo %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <div class="d-flex gap-2">
+    <a href="{% url 'configuracao_empresa_editar' %}" class="btn btn-outline-secondary"><i class="bi bi-gear"></i> Configuração do Portal</a>
+    <a href="{% url 'solicitacao_liberacao_list' %}" class="btn btn-outline-secondary"><i class="bi bi-unlock"></i> Pedidos de Liberação</a>
+  </div>
+  <a href="{% url 'promocao_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nova promoção</a>
+</div>
+<p class="text-muted small">Promoções marcadas como "Ativa" aparecem na tela inicial do Portal do Cliente.</p>
+
+<div class="row g-3">
+  {% for p in promocoes %}
+  <div class="col-md-4">
+    <div class="card p-3">
+      {% if p.imagem %}<img src="{{ p.imagem.url }}" class="rounded mb-2" style="width:100%;height:140px;object-fit:cover;">{% endif %}
+      <div class="d-flex justify-content-between align-items-start">
+        <h6 class="mb-1">{{ p.titulo }}</h6>
+        {% if p.ativa %}<span class="badge bg-success">Ativa</span>{% else %}<span class="badge bg-secondary">Inativa</span>{% endif %}
+      </div>
+      <p class="text-muted small mb-3">{{ p.descricao|default:"—"|truncatechars:100 }}</p>
+      <div class="d-flex gap-2">
+        <form method="post" action="{% url 'promocao_toggle' p.pk %}">
+          {% csrf_token %}
+          <button class="btn btn-sm btn-outline-secondary">{% if p.ativa %}Desativar{% else %}Ativar{% endif %}</button>
+        </form>
+        <a href="{% url 'promocao_delete' p.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></a>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <p class="text-muted">Nenhuma promoção cadastrada ainda.</p>
+  {% endfor %}
+</div>
+{% endblock %}

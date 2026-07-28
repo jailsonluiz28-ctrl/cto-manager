@@ -1,0 +1,35 @@
+{% extends "portal/_base_portal.html" %}
+{% block title %}Esqueci minha senha - Portal do Cliente{% endblock %}
+{% block conteudo %}
+{% include "portal/_estilo.html" %}
+<div class="portal-wrap">
+  <div class="portal-card">
+    <div class="portal-logo"><i class="bi bi-key"></i></div>
+    <div class="portal-titulo">Esqueci minha senha</div>
+    <div class="portal-sub">Confirme seus dados pra criar uma senha nova.</div>
+
+    {% if erro %}<div class="alert alert-danger py-2 small">{{ erro }}</div>{% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label class="form-label">Nome completo</label>
+        <input type="text" name="nome" class="form-control" required autofocus>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">CPF</label>
+        <input type="text" name="cpf" class="form-control" placeholder="000.000.000-00" required inputmode="numeric">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Data de nascimento</label>
+        <input type="date" name="data_nascimento" class="form-control" required>
+      </div>
+      <button type="submit" class="portal-btn">Continuar</button>
+    </form>
+
+    <div class="portal-links">
+      <a href="{% url 'portal_login' %}">← Voltar pra tela de entrar</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "portal/_base_portal.html" %}
+{% block title %}Criar senha - Portal do Cliente{% endblock %}
+{% block conteudo %}
+{% include "portal/_estilo.html" %}
+<div class="portal-wrap">
+  <div class="portal-card">
+    <div class="portal-logo"><i class="bi bi-shield-lock"></i></div>
+    <div class="portal-titulo">Olá, {{ cliente.nome }}!</div>
+    <div class="portal-sub">Agora é só escolher sua senha (mínimo 6 caracteres).</div>
+
+    {% if erro %}<div class="alert alert-danger py-2 small">{{ erro }}</div>{% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label class="form-label">Nova senha</label>
+        <input type="password" name="senha1" class="form-control" required autofocus minlength="6">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Confirme a nova senha</label>
+        <input type="password" name="senha2" class="form-control" required minlength="6">
+      </div>
+      <button type="submit" class="portal-btn">Salvar senha</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

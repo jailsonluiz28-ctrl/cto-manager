@@ -100,6 +100,7 @@ class Command(BaseCommand):
                     "status": status,
                     "dia_vencimento": (i % 28) + 1,
                     "data_ativacao": date.today() - timedelta(days=i * 20),
+                    "data_nascimento": date(1985 + i, ((i * 3) % 12) + 1, ((i * 7) % 27) + 1),
                 },
             )
             clientes.append(cliente)

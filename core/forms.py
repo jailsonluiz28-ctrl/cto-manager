@@ -32,8 +32,8 @@ class ClienteForm(BootstrapFormMixin, forms.ModelForm):
             "observacoes",
         ]
         widgets = {
-            "data_nascimento": forms.DateInput(attrs={"type": "date"}),
-            "data_ativacao": forms.DateInput(attrs={"type": "date"}),
+            "data_nascimento": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+            "data_ativacao": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
             "senha_pppoe": forms.PasswordInput(render_value=True),
             "observacoes": forms.Textarea(),
         }
@@ -46,15 +46,18 @@ class ClienteForm(BootstrapFormMixin, forms.ModelForm):
             choices=[(5, "5"), (10, "10"), (15, "15"), (20, "20")], attrs={"class": "form-select"}
         )
         # A porta é preenchida dinamicamente via JS de acordo com a CTO escolhida
-        # (ver script no template cliente_form.html). Aqui só garantimos que a porta
-        # atual do cliente (se estiver editando) sempre apareça como opção válida.
+        # (ver script no template cliente_form.html). Usamos CharField (não
+        # ChoiceField) porque as opções só existem no navegador — um ChoiceField
+        # rejeitaria a porta escolhida, já que o Django não teria como saber de
+        # antemão quais portas ficariam disponíveis pra cada CTO.
+        self.fields["porta"] = forms.CharField(
+            required=False, widget=forms.Select(attrs={"class": "form-select", "id": "id_porta"}),
+        )
         porta_atual = self.instance.porta if self.instance and self.instance.pk else ""
         opcoes = [("", "Selecione a CTO primeiro")]
         if porta_atual:
             opcoes.append((porta_atual, f"Porta {porta_atual} (atual)"))
-        self.fields["porta"] = forms.ChoiceField(
-            choices=opcoes, required=False, widget=forms.Select(attrs={"class": "form-select", "id": "id_porta"})
-        )
+        self.fields["porta"].widget.choices = opcoes
 
 
 class CTOForm(BootstrapFormMixin, forms.ModelForm):
@@ -106,7 +109,7 @@ class ContaPagarForm(BootstrapFormMixin, forms.ModelForm):
             "vencimento": "Vencimento (1º vencimento, se parcelado)",
             "nota_fiscal": "Nota fiscal / documento (PDF)",
         }
-        widgets = {"vencimento": forms.DateInput(attrs={"type": "date"})}
+        widgets = {"vencimento": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -171,7 +174,7 @@ class DebitoCongeladoForm(BootstrapFormMixin, forms.ModelForm):
         fields = ["descricao", "valor", "data_origem", "observacoes"]
         labels = {"data_origem": "De quando é essa dívida (opcional)"}
         widgets = {
-            "data_origem": forms.DateInput(attrs={"type": "date"}),
+            "data_origem": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
             "observacoes": forms.Textarea(attrs={"rows": 3}),
         }
 
@@ -183,7 +186,7 @@ class DebitoCongeladoForm(BootstrapFormMixin, forms.ModelForm):
 class NegociarDebitoForm(BootstrapFormMixin, forms.Form):
     valor_parcela = forms.DecimalField(label="Valor de cada parcela", max_digits=10, decimal_places=2)
     parcelas = forms.IntegerField(label="Em quantas vezes", min_value=1, initial=1)
-    primeiro_vencimento = forms.DateField(label="1º vencimento", widget=forms.DateInput(attrs={"type": "date"}))
+    primeiro_vencimento = forms.DateField(label="1º vencimento", widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
     forma_pagamento = forms.ChoiceField(
         label="Forma de pagamento",
         choices=[("boleto", "Boleto"), ("cartao", "Cartão"), ("avista", "À vista, em uma vez só")],
@@ -297,7 +300,7 @@ class AbonoForm(BootstrapFormMixin, forms.Form):
     usuario = forms.ModelChoiceField(
         label="Funcionário", queryset=User.objects.filter(role__in=["tecnico", "operador"], is_active=True)
     )
-    data = forms.DateField(label="Data a abonar", widget=forms.DateInput(attrs={"type": "date"}))
+    data = forms.DateField(label="Data a abonar", widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
     motivo = forms.CharField(
         label="Motivo", widget=forms.Textarea(attrs={"rows": 2}),
         help_text="Ex: atestado médico, folga autorizada, etc. Esse dia não conta como falta.",

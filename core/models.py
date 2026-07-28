@@ -113,8 +113,16 @@ class Cliente(models.Model):
     latitude = models.FloatField(null=True, blank=True, editable=False)
     longitude = models.FloatField(null=True, blank=True, editable=False)
 
+    cpf_digitos = models.CharField(max_length=14, blank=True, editable=False, db_index=True)
+    portal_senha_hash = models.CharField(max_length=128, blank=True, editable=False)
+    portal_senha_definida_em = models.DateTimeField(null=True, blank=True, editable=False)
+
     class Meta:
         ordering = ["-criado_em"]
+
+    def save(self, *args, **kwargs):
+        self.cpf_digitos = "".join(ch for ch in (self.cpf_cnpj or "") if ch.isdigit())
+        super().save(*args, **kwargs)
 
     def valor_mensal(self):
         return self.plano.valor_mensal if self.plano else 0
@@ -630,3 +638,80 @@ class LiberacaoExtraPonto(models.Model):
     def __str__(self):
         status = "usada" if self.usada else "pendente"
         return f"Liberação extra de {self.usuario} em {self.data} ({status})"
+
+
+# ---------------------------------------------------------------------------
+# PORTAL DO CLIENTE
+# ---------------------------------------------------------------------------
+class ConfiguracaoEmpresa(models.Model):
+    """Dados da empresa usados no Portal do Cliente (WhatsApp, nome exibido).
+    Existe só um registro (padrão de 'configuração única')."""
+
+    nome_fantasia = models.CharField(max_length=150, blank=True)
+    whatsapp_numero = models.CharField(
+        max_length=20, blank=True,
+        help_text="Só números, com DDD e DDI (ex: 5581999998888) — usado no botão de WhatsApp do Portal do Cliente",
+    )
+    mensagem_boas_vindas = models.CharField(
+        max_length=255, blank=True,
+        help_text="Mensagem curta mostrada no topo do Portal do Cliente (opcional)",
+    )
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Configuração da Empresa"
+        verbose_name_plural = "Configuração da Empresa"
+
+    def __str__(self):
+        return self.nome_fantasia or "Configuração da Empresa"
+
+    @classmethod
+    def obter(cls):
+        obj, _criado = cls.objects.get_or_create(pk=1)
+        return obj
+
+
+class Promocao(models.Model):
+    """Avisos/promoções que o Administrador cadastra e que aparecem na tela
+    inicial do Portal do Cliente."""
+
+    titulo = models.CharField(max_length=150)
+    descricao = models.TextField(blank=True)
+    imagem = models.ImageField(upload_to="promocoes/%Y/%m/", null=True, blank=True)
+    ativa = models.BooleanField(default=True)
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+        verbose_name = "Promoção"
+        verbose_name_plural = "Promoções"
+
+    def __str__(self):
+        return self.titulo
+
+
+class SolicitacaoLiberacaoConfianca(models.Model):
+    """Pedido feito pelo cliente no Portal, pedindo pra internet ser liberada
+    por confiança mesmo com a fatura em aberto (ex: vai pagar em breve).
+    O Administrador/Operador vê e marca como atendida depois de resolver."""
+
+    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name="solicitacoes_liberacao")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atendida = models.BooleanField(default=False)
+    atendida_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    atendida_em = models.DateTimeField(null=True, blank=True)
+    observacao_admin = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+        verbose_name = "Solicitação de liberação de confiança"
+        verbose_name_plural = "Solicitações de liberação de confiança"
+
+    def __str__(self):
+        status = "atendida" if self.atendida else "pendente"
+        return f"Liberação de confiança - {self.cliente.nome} ({status})"

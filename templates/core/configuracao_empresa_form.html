@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block titulo %}Configuração do Portal do Cliente{% endblock %}
+{% block conteudo %}
+<div class="d-flex justify-content-end mb-3">
+  <a href="{% url 'promocao_list' %}" class="btn btn-outline-secondary"><i class="bi bi-megaphone"></i> Ver Promoções</a>
+</div>
+<div class="card p-4" style="max-width:520px;">
+  <form method="post">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label class="form-label small">Nome da empresa (exibido no Portal do Cliente)</label>
+      <input type="text" name="nome_fantasia" class="form-control" value="{{ config.nome_fantasia }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label small">WhatsApp da empresa</label>
+      <input type="text" name="whatsapp_numero" class="form-control" placeholder="Ex: 81999998888 (DDD + número, sem o 55 — a gente adiciona automático)" value="{{ config.whatsapp_numero }}">
+      <div class="form-text">Esse é o número que abre quando o cliente clica em "Falar no WhatsApp" no Portal. Não precisa digitar o 55 do Brasil na frente, o sistema adiciona sozinho.</div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label small">Mensagem de boas-vindas (opcional)</label>
+      <input type="text" name="mensagem_boas_vindas" class="form-control" value="{{ config.mensagem_boas_vindas }}" placeholder="Ex: Estamos com manutenção programada dia 30/07.">
+    </div>
+    <div class="d-flex justify-content-end">
+      <button class="btn btn-primary" type="submit">Salvar</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

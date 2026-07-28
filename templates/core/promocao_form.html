@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block titulo %}Nova Promoção{% endblock %}
+{% block conteudo %}
+<div class="card p-4" style="max-width:520px;">
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label class="form-label small">Título</label>
+      <input type="text" name="titulo" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label small">Descrição (opcional)</label>
+      <textarea name="descricao" class="form-control" rows="3"></textarea>
+    </div>
+    <div class="mb-3">
+      <label class="form-label small">Imagem (opcional)</label>
+      <input type="file" name="imagem" accept="image/*" class="form-control">
+    </div>
+    <div class="mb-3 form-check">
+      <input type="checkbox" name="ativa" class="form-check-input" id="ativa" checked>
+      <label class="form-check-label" for="ativa">Já deixar ativa (aparece no Portal do Cliente agora)</label>
+    </div>
+    <div class="d-flex gap-2 justify-content-end">
+      <a href="{% url 'promocao_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+      <button class="btn btn-primary" type="submit">Salvar promoção</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
