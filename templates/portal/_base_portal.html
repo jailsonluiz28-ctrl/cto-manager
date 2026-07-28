@@ -28,6 +28,22 @@
   <i class="bi bi-download"></i> Instalar app do Portal
 </button>
 
+<div class="modal fade" id="modal-instalar-manual" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title">Como instalar</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body small">
+        <p class="mb-2">Seu navegador ainda não liberou a instalação automática. Pra instalar manualmente:</p>
+        <p class="mb-1"><strong>Android/Chrome:</strong> toque no menu (⋮) no canto e escolha "Instalar aplicativo" ou "Adicionar à tela inicial".</p>
+        <p class="mb-0"><strong>iPhone/Safari:</strong> toque no ícone de Compartilhar (□↑) e escolha "Adicionar à Tela de Início".</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 if ("serviceWorker" in navigator) {
@@ -36,20 +52,28 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-// Botão "Instalar app": só aparece quando o navegador avisa que dá pra
-// instalar, e some assim que a pessoa instala (ou já tem instalado).
+// Botão "Instalar app": some se o app já estiver rodando instalado (modo
+// standalone). Se o navegador oferecer o instalador automático, usa ele;
+// senão, mostra instrução manual — assim sempre tem um jeito de instalar,
+// mesmo quando o navegador demora a liberar o aviso automático.
 let eventoInstalacao = null;
 const botaoInstalar = document.getElementById("btn-instalar-portal");
+const jaInstalado = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+
+if (!jaInstalado) {
+  botaoInstalar.style.display = "block";
+}
 window.addEventListener("beforeinstallprompt", function (evento) {
   evento.preventDefault();
   eventoInstalacao = evento;
-  botaoInstalar.style.display = "block";
 });
 botaoInstalar.addEventListener("click", function () {
-  botaoInstalar.style.display = "none";
-  if (!eventoInstalacao) return;
-  eventoInstalacao.prompt();
-  eventoInstalacao = null;
+  if (eventoInstalacao) {
+    eventoInstalacao.prompt();
+    eventoInstalacao.userChoice.finally(function () { eventoInstalacao = null; });
+  } else {
+    new bootstrap.Modal(document.getElementById("modal-instalar-manual")).show();
+  }
 });
 window.addEventListener("appinstalled", function () {
   botaoInstalar.style.display = "none";
