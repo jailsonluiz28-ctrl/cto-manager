@@ -18,7 +18,11 @@
       </div>
       <div class="mb-3">
         <label class="form-label">Data de nascimento</label>
-        <input type="date" name="data_nascimento" class="form-control" required>
+        <div class="d-flex gap-2">
+          <input type="text" name="nasc_dia" class="form-control text-center" placeholder="DD" inputmode="numeric" pattern="[0-9]*" maxlength="2" required style="max-width:70px;">
+          <input type="text" name="nasc_mes" class="form-control text-center" placeholder="MM" inputmode="numeric" pattern="[0-9]*" maxlength="2" required style="max-width:70px;">
+          <input type="text" name="nasc_ano" class="form-control text-center" placeholder="AAAA" inputmode="numeric" pattern="[0-9]*" maxlength="4" required style="max-width:100px;">
+        </div>
       </div>
       <button type="submit" class="portal-btn">Continuar</button>
     </form>
@@ -28,4 +32,14 @@
     </div>
   </div>
 </div>
+<script>
+document.querySelectorAll('input[name="nasc_dia"], input[name="nasc_mes"]').forEach(function (campo) {
+  campo.addEventListener("input", function () {
+    if (this.value.length >= this.maxLength) {
+      const proximo = this.parentElement.querySelector('input[name="' + (this.name === "nasc_dia" ? "nasc_mes" : "nasc_ano") + '"]');
+      if (proximo) proximo.focus();
+    }
+  });
+});
+</script>
 {% endblock %}

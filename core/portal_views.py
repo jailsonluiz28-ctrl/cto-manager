@@ -4,7 +4,7 @@ WhatsApp com a empresa e ver promoções. Login é feito com CPF + senha; a senh
 é escolhida pelo próprio cliente no primeiro acesso, depois de confirmar CPF e
 data de nascimento (os mesmos dados que já ficam no cadastro dele)."""
 
-from datetime import datetime
+from datetime import datetime, date
 
 from django.contrib import messages
 from django.contrib.auth.hashers import make_password, check_password
@@ -31,6 +31,19 @@ def _parse_data(txt):
     """Converte o valor de um <input type=date> (AAAA-MM-DD) pra date. None se inválido."""
     try:
         return datetime.strptime(txt, "%Y-%m-%d").date()
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_data_partes(request, prefixo="nasc"):
+    """Monta a data de nascimento a partir de 3 campos numéricos digitados
+    (dia/mês/ano) — mais rápido no celular do que rolar um calendário até
+    décadas atrás. None se algum campo estiver vazio ou a data for inválida."""
+    try:
+        dia = int(request.POST.get(f"{prefixo}_dia", ""))
+        mes = int(request.POST.get(f"{prefixo}_mes", ""))
+        ano = int(request.POST.get(f"{prefixo}_ano", ""))
+        return date(ano, mes, dia)
     except (TypeError, ValueError):
         return None
 
@@ -88,7 +101,7 @@ def portal_primeiro_acesso(request):
     erro = None
     if request.method == "POST":
         cpf = _so_digitos(request.POST.get("cpf"))
-        data_nasc = _parse_data(request.POST.get("data_nascimento"))
+        data_nasc = _parse_data_partes(request)
         cliente = Cliente.objects.filter(cpf_digitos=cpf, data_nascimento=data_nasc).exclude(status="cancelado").first() if data_nasc else None
 
         if not cliente:
@@ -107,7 +120,7 @@ def portal_esqueci_senha(request):
     if request.method == "POST":
         nome = normalizar(request.POST.get("nome"))
         cpf = _so_digitos(request.POST.get("cpf"))
-        data_nasc = _parse_data(request.POST.get("data_nascimento"))
+        data_nasc = _parse_data_partes(request)
         cliente = Cliente.objects.filter(cpf_digitos=cpf, data_nascimento=data_nasc).exclude(status="cancelado").first() if data_nasc else None
 
         if not cliente or normalizar(cliente.nome) != nome:

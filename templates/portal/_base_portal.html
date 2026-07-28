@@ -23,6 +23,11 @@
 </div>
 {% endif %}
 {% block conteudo %}{% endblock %}
+
+<button id="btn-instalar-portal" type="button" style="display:none;position:fixed;left:16px;right:16px;bottom:16px;z-index:1500;max-width:420px;margin:0 auto;background:linear-gradient(135deg,#2563eb,#0891b2);color:#fff;border:none;border-radius:12px;padding:.85rem 1rem;font-weight:700;box-shadow:0 10px 25px rgba(0,0,0,.25);">
+  <i class="bi bi-download"></i> Instalar app do Portal
+</button>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 if ("serviceWorker" in navigator) {
@@ -30,6 +35,25 @@ if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/sw.js").catch(function () {});
   });
 }
+
+// Botão "Instalar app": só aparece quando o navegador avisa que dá pra
+// instalar, e some assim que a pessoa instala (ou já tem instalado).
+let eventoInstalacao = null;
+const botaoInstalar = document.getElementById("btn-instalar-portal");
+window.addEventListener("beforeinstallprompt", function (evento) {
+  evento.preventDefault();
+  eventoInstalacao = evento;
+  botaoInstalar.style.display = "block";
+});
+botaoInstalar.addEventListener("click", function () {
+  botaoInstalar.style.display = "none";
+  if (!eventoInstalacao) return;
+  eventoInstalacao.prompt();
+  eventoInstalacao = null;
+});
+window.addEventListener("appinstalled", function () {
+  botaoInstalar.style.display = "none";
+});
 </script>
 </body>
 </html>
