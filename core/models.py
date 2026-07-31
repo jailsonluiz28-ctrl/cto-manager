@@ -116,6 +116,8 @@ class Cliente(models.Model):
     cpf_digitos = models.CharField(max_length=14, blank=True, editable=False, db_index=True)
     portal_senha_hash = models.CharField(max_length=128, blank=True, editable=False)
     portal_senha_definida_em = models.DateTimeField(null=True, blank=True, editable=False)
+    portal_tentativas_falhas = models.PositiveSmallIntegerField(default=0, editable=False)
+    portal_bloqueado_ate = models.DateTimeField(null=True, blank=True, editable=False)
 
     class Meta:
         ordering = ["-criado_em"]
@@ -400,7 +402,7 @@ class LogAtividade(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="logs"
     )
     acao = models.CharField(max_length=255)
-    detalhes = models.CharField(max_length=255, blank=True)
+    detalhes = models.TextField(blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -30,7 +30,7 @@ from .forms import ClienteForm, ChamadoForm, ContaPagarForm, CTOForm, PlanoForm,
 from .decorators import somente_operacao, somente_admin
 from .mixins import SomenteAdminMixin, SomenteOperacaoMixin
 from django.contrib.auth.models import Group, Permission
-from .utils import normalizar, rotulo_permissao, MODELO_LABELS, ACAO_LABELS, proximo_tipo_ponto, tem_entrada_hoje, resumo_ponto_dia, geocodificar_cliente, distancia_metros, formatar_quantidade_material
+from .utils import normalizar, rotulo_permissao, MODELO_LABELS, ACAO_LABELS, proximo_tipo_ponto, tem_entrada_hoje, resumo_ponto_dia, geocodificar_cliente, distancia_metros, formatar_quantidade_material, MODELOS_AUDITORIA
 from accounts.models import User
 
 
@@ -1466,7 +1466,9 @@ def _dados_relatorios(request):
     tecnico_filtro = request.GET.get("tecnico", "")
     operador_filtro = request.GET.get("operador", "")
     tecnico_tempo_filtro = request.GET.get("tecnico_tempo", "")
-    abas_validas = {"tecnicos", "operadores", "chamados", "clientes", "crescimento", "tempo-atendimento", "estoque", "contas"}
+    usuario_auditoria_filtro = request.GET.get("usuario_auditoria", "")
+    modelo_auditoria_filtro = request.GET.get("modelo_auditoria", "")
+    abas_validas = {"tecnicos", "operadores", "chamados", "clientes", "crescimento", "tempo-atendimento", "estoque", "contas", "auditoria"}
     aba_ativa = request.GET.get("aba", "tecnicos")
     if aba_ativa not in abas_validas:
         aba_ativa = "tecnicos"
@@ -1615,6 +1617,15 @@ def _dados_relatorios(request):
     contas_pagas_lista.sort(key=lambda r: r["ultimo_vencimento"], reverse=True)
     total_contas_pagas = sum((r["total_pago"] for r in contas_pagas_lista), 0)
 
+    # --- 9. Auditoria (Histórico de Movimentações completo, com filtros) ---
+    auditoria_qs = LogAtividade.objects.select_related("usuario").filter(criado_em__year=ano, criado_em__month=mes)
+    if usuario_auditoria_filtro:
+        auditoria_qs = auditoria_qs.filter(usuario_id=usuario_auditoria_filtro)
+    if modelo_auditoria_filtro:
+        auditoria_qs = auditoria_qs.filter(acao__istartswith=modelo_auditoria_filtro)
+    auditoria_lista = auditoria_qs.order_by("-criado_em")[:500]
+    usuarios_auditoria_todos = User.objects.all().order_by("username")
+
     context = {
         "mes": mes, "ano": ano, "mes_ref": date(ano, mes, 1),
         "meses_opcoes": [(i, MESES_PT[i]) for i in range(1, 13)],
@@ -1655,6 +1666,11 @@ def _dados_relatorios(request):
         "total_congelado": total_congelado,
         "contas_pagas_lista": contas_pagas_lista,
         "total_contas_pagas": total_contas_pagas,
+        "usuario_auditoria_filtro": usuario_auditoria_filtro,
+        "modelo_auditoria_filtro": modelo_auditoria_filtro,
+        "auditoria_lista": auditoria_lista,
+        "usuarios_auditoria_todos": usuarios_auditoria_todos,
+        "modelos_auditoria_opcoes": MODELOS_AUDITORIA,
     }
     return context
 
@@ -1799,6 +1815,22 @@ def relatorios_pdf(request):
         if len(linhas) == 1:
             linhas.append(["Nenhuma conta quitada por completo ainda.", "—", "—", "—"])
         tabela(linhas)
+
+    elif aba == "auditoria":
+        titulo(f"Relatório de Auditoria - {titulo_periodo}")
+        elementos.append(Paragraph(f"{len(dados['auditoria_lista'])} registros no período.", estilos["Normal"]))
+        elementos.append(Spacer(1, 10))
+        linhas = [["Data/Hora", "Usuário", "Ação", "Detalhes"]]
+        for log in dados["auditoria_lista"]:
+            linhas.append([
+                log.criado_em.strftime("%d/%m/%Y %H:%M"),
+                str(log.usuario) if log.usuario else "Sistema",
+                log.acao,
+                Paragraph(log.detalhes or "—", estilos["Normal"]),
+            ])
+        t = Table(linhas, repeatRows=1, colWidths=[3.2 * cm, 3.5 * cm, 4 * cm, 12 * cm])
+        t.setStyle(_estilo_tabela_pdf())
+        elementos.append(t)
 
     else:
         titulo(f"Relatório - {titulo_periodo}")

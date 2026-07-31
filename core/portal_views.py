@@ -4,7 +4,7 @@ WhatsApp com a empresa e ver promoções. Login é feito com CPF + senha; a senh
 é escolhida pelo próprio cliente no primeiro acesso, depois de confirmar CPF e
 data de nascimento (os mesmos dados que já ficam no cadastro dele)."""
 
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.hashers import make_password, check_password
@@ -19,7 +19,10 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.units import cm
 
-from .models import Cliente, Promocao, ConfiguracaoEmpresa, SolicitacaoLiberacaoConfianca
+LIMITE_TENTATIVAS_PORTAL = 5
+MINUTOS_BLOQUEIO_PORTAL = 15
+
+from .models import Cliente, Promocao, ConfiguracaoEmpresa, SolicitacaoLiberacaoConfianca, LogAtividade
 from .utils import normalizar
 
 
@@ -81,15 +84,53 @@ def portal_login(request):
         cpf = _so_digitos(request.POST.get("cpf"))
         senha = request.POST.get("senha", "")
         cliente = Cliente.objects.filter(cpf_digitos=cpf).exclude(status="cancelado").first()
-        if not cliente or not cliente.portal_senha_hash:
+
+        if cliente and cliente.portal_bloqueado_ate and cliente.portal_bloqueado_ate > timezone.now():
+            minutos = int((cliente.portal_bloqueado_ate - timezone.now()).total_seconds() // 60) + 1
+            erro = f"Muitas tentativas de senha erradas. Tente de novo em {minutos} minuto(s)."
+        elif not cliente or not cliente.portal_senha_hash:
             erro = "CPF não encontrado, ou você ainda não fez o primeiro acesso."
+            _registrar_tentativa_portal_falha(cpf, cliente)
         elif not check_password(senha, cliente.portal_senha_hash):
             erro = "CPF ou senha incorretos."
+            _registrar_tentativa_portal_falha(cpf, cliente)
         else:
+            if cliente.portal_tentativas_falhas or cliente.portal_bloqueado_ate:
+                Cliente.objects.filter(pk=cliente.pk).update(portal_tentativas_falhas=0, portal_bloqueado_ate=None)
             request.session["portal_cliente_id"] = cliente.id
             return redirect("portal_dashboard")
 
     return render(request, "portal/login.html", {"erro": erro})
+
+
+def _registrar_tentativa_portal_falha(cpf, cliente, contexto="login"):
+    """Conta tentativas erradas de acesso do cliente ao Portal (login, primeiro
+    acesso ou recuperação de senha), bloqueia temporariamente depois de várias
+    seguidas, e sempre deixa na Auditoria — inclusive quando o CPF digitado
+    não é de ninguém cadastrado."""
+    rotulo = {
+        "login": "Tentativa de login no Portal falhou",
+        "primeiro_acesso": "Tentativa de primeiro acesso ao Portal falhou",
+        "esqueci_senha": "Tentativa de recuperar senha do Portal falhou",
+    }.get(contexto, "Tentativa de acesso ao Portal falhou")
+
+    if not cliente:
+        LogAtividade.objects.create(
+            usuario=None, acao=rotulo, detalhes=f"CPF {cpf} não corresponde a nenhum cliente",
+        )
+        return
+
+    tentativas = cliente.portal_tentativas_falhas + 1
+    bloqueado_ate = cliente.portal_bloqueado_ate
+    aviso_bloqueio = ""
+    if tentativas >= LIMITE_TENTATIVAS_PORTAL:
+        bloqueado_ate = timezone.now() + timedelta(minutes=MINUTOS_BLOQUEIO_PORTAL)
+        aviso_bloqueio = f" — BLOQUEADO por {MINUTOS_BLOQUEIO_PORTAL} minutos"
+    Cliente.objects.filter(pk=cliente.pk).update(portal_tentativas_falhas=tentativas, portal_bloqueado_ate=bloqueado_ate)
+    LogAtividade.objects.create(
+        usuario=None, acao=rotulo,
+        detalhes=f"{cliente.nome} — tentativa {tentativas}/{LIMITE_TENTATIVAS_PORTAL}{aviso_bloqueio}",
+    )
 
 
 def portal_logout(request):
@@ -101,16 +142,25 @@ def portal_primeiro_acesso(request):
     erro = None
     if request.method == "POST":
         cpf = _so_digitos(request.POST.get("cpf"))
-        data_nasc = _parse_data_partes(request)
-        cliente = Cliente.objects.filter(cpf_digitos=cpf, data_nascimento=data_nasc).exclude(status="cancelado").first() if data_nasc else None
+        cliente_por_cpf = Cliente.objects.filter(cpf_digitos=cpf).exclude(status="cancelado").first() if cpf else None
 
-        if not cliente:
-            erro = "Não encontramos um cadastro com esse CPF e data de nascimento. Confira os dados ou fale com a gente."
-        elif cliente.portal_senha_hash:
-            erro = "Esse CPF já tem senha cadastrada. Use a tela de entrar, ou \"Esqueci minha senha\"."
+        if cliente_por_cpf and cliente_por_cpf.portal_bloqueado_ate and cliente_por_cpf.portal_bloqueado_ate > timezone.now():
+            minutos = int((cliente_por_cpf.portal_bloqueado_ate - timezone.now()).total_seconds() // 60) + 1
+            erro = f"Muitas tentativas erradas. Tente de novo em {minutos} minuto(s)."
         else:
-            request.session["portal_definir_senha_cliente_id"] = cliente.id
-            return redirect("portal_definir_senha")
+            data_nasc = _parse_data_partes(request)
+            cliente = Cliente.objects.filter(cpf_digitos=cpf, data_nascimento=data_nasc).exclude(status="cancelado").first() if data_nasc else None
+
+            if not cliente:
+                erro = "Não encontramos um cadastro com esse CPF e data de nascimento. Confira os dados ou fale com a gente."
+                _registrar_tentativa_portal_falha(cpf, cliente_por_cpf, contexto="primeiro_acesso")
+            elif cliente.portal_senha_hash:
+                erro = "Esse CPF já tem senha cadastrada. Use a tela de entrar, ou \"Esqueci minha senha\"."
+            else:
+                if cliente.portal_tentativas_falhas or cliente.portal_bloqueado_ate:
+                    Cliente.objects.filter(pk=cliente.pk).update(portal_tentativas_falhas=0, portal_bloqueado_ate=None)
+                request.session["portal_definir_senha_cliente_id"] = cliente.id
+                return redirect("portal_definir_senha")
 
     return render(request, "portal/primeiro_acesso.html", {"erro": erro})
 
@@ -120,14 +170,23 @@ def portal_esqueci_senha(request):
     if request.method == "POST":
         nome = normalizar(request.POST.get("nome"))
         cpf = _so_digitos(request.POST.get("cpf"))
-        data_nasc = _parse_data_partes(request)
-        cliente = Cliente.objects.filter(cpf_digitos=cpf, data_nascimento=data_nasc).exclude(status="cancelado").first() if data_nasc else None
+        cliente_por_cpf = Cliente.objects.filter(cpf_digitos=cpf).exclude(status="cancelado").first() if cpf else None
 
-        if not cliente or normalizar(cliente.nome) != nome:
-            erro = "Não encontramos um cadastro com esse nome, CPF e data de nascimento. Confira os dados ou fale com a gente."
+        if cliente_por_cpf and cliente_por_cpf.portal_bloqueado_ate and cliente_por_cpf.portal_bloqueado_ate > timezone.now():
+            minutos = int((cliente_por_cpf.portal_bloqueado_ate - timezone.now()).total_seconds() // 60) + 1
+            erro = f"Muitas tentativas erradas. Tente de novo em {minutos} minuto(s)."
         else:
-            request.session["portal_definir_senha_cliente_id"] = cliente.id
-            return redirect("portal_definir_senha")
+            data_nasc = _parse_data_partes(request)
+            cliente = Cliente.objects.filter(cpf_digitos=cpf, data_nascimento=data_nasc).exclude(status="cancelado").first() if data_nasc else None
+
+            if not cliente or normalizar(cliente.nome) != nome:
+                erro = "Não encontramos um cadastro com esse nome, CPF e data de nascimento. Confira os dados ou fale com a gente."
+                _registrar_tentativa_portal_falha(cpf, cliente_por_cpf, contexto="esqueci_senha")
+            else:
+                if cliente.portal_tentativas_falhas or cliente.portal_bloqueado_ate:
+                    Cliente.objects.filter(pk=cliente.pk).update(portal_tentativas_falhas=0, portal_bloqueado_ate=None)
+                request.session["portal_definir_senha_cliente_id"] = cliente.id
+                return redirect("portal_definir_senha")
 
     return render(request, "portal/esqueci_senha.html", {"erro": erro})
 

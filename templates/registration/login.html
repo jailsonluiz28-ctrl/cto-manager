@@ -136,7 +136,7 @@
       <div class="login-divider-dot"><span></span><i class="bi bi-circle-fill"></i><span></span></div>
 
       {% if form.errors %}
-        <div class="alert alert-danger py-2 small">Usuário ou senha inválidos.</div>
+        <div class="alert alert-danger py-2 small">{{ form.non_field_errors.0|default:"Usuário ou senha inválidos." }}</div>
       {% endif %}
 
       <form method="post">

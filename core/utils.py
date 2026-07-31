@@ -196,3 +196,28 @@ def distancia_metros(lat1, lon1, lat2, lon2):
     dlambda = radians(lon2 - lon1)
     a = sin(dphi / 2) ** 2 + cos(phi1) * cos(phi2) * sin(dlambda / 2) ** 2
     return 2 * raio_terra * atan2(sqrt(a), sqrt(1 - a))
+
+
+# ---------------------------------------------------------------------------
+# Auditoria: lista de modelos monitorados (usada no filtro do relatório) e
+# limpeza automática dos registros com mais de 6 meses.
+# ---------------------------------------------------------------------------
+
+MODELOS_AUDITORIA = [
+    "Cliente", "CTO", "Chamado", "Plano", "Conta a pagar", "Débito congelado",
+    "Material", "Usuário", "Configuração do Portal", "Promoção", "Jornada de trabalho",
+    "Movimentação de estoque", "Pagamento", "Abono de ponto",
+    "Pedido de liberação de confiança", "Login no sistema", "Prioridade do chamado alterada",
+]
+
+
+def limpar_auditoria_antiga():
+    """Mantém só os últimos 6 meses no Histórico de Movimentações — os registros
+    mais antigos vão sendo apagados sozinhos conforme entram novos, pra não
+    crescer pra sempre. Só afeta a auditoria (LogAtividade), nenhum outro dado."""
+    from datetime import timedelta
+    from django.utils import timezone
+    from .models import LogAtividade
+
+    limite = timezone.now() - timedelta(days=183)
+    LogAtividade.objects.filter(criado_em__lt=limite).delete()

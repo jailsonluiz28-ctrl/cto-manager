@@ -21,6 +21,7 @@
   <li class="nav-item"><a class="nav-link {% if aba_ativa == 'tempo-atendimento' %}active{% endif %}" data-bs-toggle="pill" href="#tempo-atendimento">Tempo em Atendimento</a></li>
   <li class="nav-item"><a class="nav-link {% if aba_ativa == 'estoque' %}active{% endif %}" data-bs-toggle="pill" href="#estoque">Estoque de Material</a></li>
   <li class="nav-item"><a class="nav-link {% if aba_ativa == 'contas' %}active{% endif %}" data-bs-toggle="pill" href="#contas">Contas a Pagar</a></li>
+  <li class="nav-item"><a class="nav-link {% if aba_ativa == 'auditoria' %}active{% endif %}" data-bs-toggle="pill" href="#auditoria">Auditoria</a></li>
 </ul>
 
 <div class="tab-content">
@@ -396,12 +397,49 @@
     </div>
   </div>
 
+  {# ---------------- AUDITORIA ---------------- #}
+  <div class="tab-pane fade {% if aba_ativa == 'auditoria' %}show active{% endif %}" id="auditoria">
+    <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+      <form class="d-flex gap-2 flex-wrap" method="get">
+        <input type="hidden" name="mes" value="{{ mes }}"><input type="hidden" name="ano" value="{{ ano }}">
+        <input type="hidden" name="aba" value="auditoria">
+        <select name="usuario_auditoria" class="form-select" style="max-width:220px;" onchange="this.form.submit()">
+          <option value="">Todos os usuários</option>
+          {% for u in usuarios_auditoria_todos %}<option value="{{ u.id }}" {% if usuario_auditoria_filtro == u.id|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+        </select>
+        <select name="modelo_auditoria" class="form-select" style="max-width:240px;" onchange="this.form.submit()">
+          <option value="">Todos os tipos de ação</option>
+          {% for m in modelos_auditoria_opcoes %}<option value="{{ m }}" {% if modelo_auditoria_filtro == m %}selected{% endif %}>{{ m }}</option>{% endfor %}
+        </select>
+      </form>
+      <a class="btn btn-outline-primary" href="{% url 'relatorios_pdf' %}?mes={{ mes }}&ano={{ ano }}&aba=auditoria&usuario_auditoria={{ usuario_auditoria_filtro }}&modelo_auditoria={{ modelo_auditoria_filtro }}"><i class="bi bi-file-earmark-pdf"></i> Baixar PDF</a>
+    </div>
+    <p class="text-muted small">Quem fez o quê, campo a campo. O sistema apaga sozinho os registros com mais de 6 meses.</p>
+    <div class="card">
+      <table class="table mb-0 align-middle">
+        <thead class="table-light"><tr><th>Data/Hora</th><th>Usuário</th><th>Ação</th><th>Detalhes</th></tr></thead>
+        <tbody>
+          {% for log in auditoria_lista %}
+          <tr {% if "falhou" in log.acao %}class="table-danger"{% endif %}>
+            <td class="text-muted small text-nowrap">{{ log.criado_em|date:"d/m/Y H:i" }}</td>
+            <td>{{ log.usuario|default:"Sistema" }}</td>
+            <td>{% if "falhou" in log.acao %}<i class="bi bi-exclamation-triangle-fill text-danger"></i>{% endif %} {{ log.acao }}</td>
+            <td class="text-muted small">{{ log.detalhes|default:"—" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="text-center text-muted py-4">Nenhum registro de auditoria nesse período.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script>
 function submitFormMesRel() {
-  const painelAtivo = document.querySelector("#tempo-atendimento.tab-pane.show.active, #tecnicos.tab-pane.show.active, #operadores.tab-pane.show.active, #chamados.tab-pane.show.active, #clientes.tab-pane.show.active, #crescimento.tab-pane.show.active, #estoque.tab-pane.show.active, #contas.tab-pane.show.active");
+  const painelAtivo = document.querySelector("#tempo-atendimento.tab-pane.show.active, #tecnicos.tab-pane.show.active, #operadores.tab-pane.show.active, #chamados.tab-pane.show.active, #clientes.tab-pane.show.active, #crescimento.tab-pane.show.active, #estoque.tab-pane.show.active, #contas.tab-pane.show.active, #auditoria.tab-pane.show.active");
   document.getElementById("aba-input-mes").value = painelAtivo ? painelAtivo.id : "tecnicos";
   document.getElementById("form-mes-rel").submit();
 }

@@ -15,3 +15,8 @@ class CoreConfig(AppConfig):
                 fazer_backup_diario_se_necessario()
             except Exception:
                 pass  # nunca deixa um problema de backup travar o sistema
+            try:
+                from .utils import limpar_auditoria_antiga
+                limpar_auditoria_antiga()
+            except Exception:
+                pass  # nunca deixa um problema de limpeza travar o sistema

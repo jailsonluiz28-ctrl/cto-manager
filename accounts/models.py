@@ -11,6 +11,9 @@ class User(AbstractUser):
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="operador")
     telefone = models.CharField(max_length=20, blank=True)
 
+    tentativas_login_falhas = models.PositiveSmallIntegerField(default=0, editable=False)
+    bloqueado_ate = models.DateTimeField(null=True, blank=True, editable=False)
+
     def is_admin_role(self):
         return self.role == "admin"
 
