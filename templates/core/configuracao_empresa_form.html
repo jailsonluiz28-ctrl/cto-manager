@@ -4,8 +4,8 @@
 <div class="d-flex justify-content-end mb-3">
   <a href="{% url 'promocao_list' %}" class="btn btn-outline-secondary"><i class="bi bi-megaphone"></i> Ver Promoções</a>
 </div>
-<div class="card p-4" style="max-width:520px;">
-  <form method="post">
+<div class="card p-4" style="max-width:560px;">
+  <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     <div class="mb-3">
       <label class="form-label small">Nome da empresa (exibido no Portal do Cliente)</label>
@@ -20,7 +20,34 @@
       <label class="form-label small">Mensagem de boas-vindas (opcional)</label>
       <input type="text" name="mensagem_boas_vindas" class="form-control" value="{{ config.mensagem_boas_vindas }}" placeholder="Ex: Estamos com manutenção programada dia 30/07.">
     </div>
-    <div class="d-flex justify-content-end">
+
+    <hr class="my-4">
+    <h6 class="text-muted mb-3">Identidade visual (marca própria do sistema)</h6>
+
+    <div class="mb-3">
+      <label class="form-label small">Logo</label>
+      {% if config.logo %}
+      <div class="mb-2 d-flex align-items-center gap-2">
+        <img src="{{ config.logo.url }}" alt="Logo atual" style="height:40px;">
+        <label class="small text-danger mb-0"><input type="checkbox" name="remover_logo"> Remover logo atual</label>
+      </div>
+      {% endif %}
+      <input type="file" name="logo" accept="image/*" class="form-control">
+      <div class="form-text">Aparece no lugar do ícone/nome padrão, no menu do sistema e no Portal do Cliente. Se não enviar nada, continua o padrão.</div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label small">Cor principal do sistema</label>
+      <div class="d-flex align-items-center gap-2">
+        <input type="color" name="cor_primaria" value="{{ config.cor_primaria }}" style="width:60px;height:38px;padding:2px;">
+        <span class="text-muted small">Usada nos botões e no destaque do menu lateral.</span>
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-between">
+      <button class="btn btn-outline-secondary" type="submit" name="acao" value="restaurar_padrao" onclick="return confirm('Isso vai remover o logo e voltar a cor pro azul padrão. Confirma?');">
+        <i class="bi bi-arrow-counterclockwise"></i> Restaurar padrão original
+      </button>
       <button class="btn btn-primary" type="submit">Salvar</button>
     </div>
   </form>

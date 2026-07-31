@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block titulo %}Licença do Sistema{% endblock %}
+{% block conteudo %}
+<div class="alert alert-warning small">
+  <i class="bi bi-shield-lock"></i> Essa tela só aparece pra contas de superusuário — quem alugar o sistema não vê nem acessa isso.
+</div>
+
+<div class="card p-4" style="max-width:560px;">
+  <form method="post">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label class="form-label small">Nome da empresa/contratante</label>
+      <input type="text" name="nome_contratante" class="form-control" value="{{ licenca.nome_contratante }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label small">Data de vencimento</label>
+      <input type="date" name="data_vencimento" class="form-control" value="{{ licenca.data_vencimento|date:'Y-m-d' }}" format="%Y-%m-%d">
+      <div class="form-text">Deixe em branco pra nunca bloquear. Depois de vencer (+ carência), o sistema trava sozinho pra todo mundo (equipe e Portal do Cliente).</div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label small">Dias de carência após o vencimento</label>
+      <input type="number" name="dias_carencia" class="form-control" value="{{ licenca.dias_carencia }}" min="0" style="max-width:120px;">
+    </div>
+    <div class="mb-3 form-check">
+      <input type="checkbox" name="bloqueado_manualmente" class="form-check-input" id="bloqueado_manualmente" {% if licenca.bloqueado_manualmente %}checked{% endif %}>
+      <label class="form-check-label" for="bloqueado_manualmente">Bloquear agora, na hora (independente da data)</label>
+    </div>
+    <div class="mb-3">
+      <label class="form-label small">Mensagem mostrada quando bloqueado (opcional)</label>
+      <input type="text" name="mensagem_bloqueio" class="form-control" value="{{ licenca.mensagem_bloqueio }}" placeholder="Ex: Fale com Jailson pra regularizar o acesso.">
+    </div>
+    <div class="mb-3">
+      <label class="form-label small">Observações (só você vê)</label>
+      <textarea name="observacoes" class="form-control" rows="3">{{ licenca.observacoes }}</textarea>
+    </div>
+    {% if licenca.data_vencimento %}
+    <div class="alert {% if licenca.esta_bloqueado %}alert-danger{% else %}alert-light{% endif %} small">
+      {% if licenca.esta_bloqueado %}
+        <i class="bi bi-x-circle-fill"></i> Sistema BLOQUEADO agora.
+      {% else %}
+        <i class="bi bi-check-circle-fill"></i> Sistema liberado. Faltam {{ licenca.dias_ate_vencer }} dia(s) pro vencimento.
+      {% endif %}
+    </div>
+    {% endif %}
+    <div class="d-flex justify-content-end">
+      <button class="btn btn-primary" type="submit">Salvar</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

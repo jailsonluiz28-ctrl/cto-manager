@@ -14,6 +14,7 @@ from .models import (
     Cliente, CTO, Chamado, Plano, LogAtividade,
     ContaPagar, DebitoCongelado, Material, ConfiguracaoEmpresa, Promocao,
     JornadaTrabalho, MovimentacaoEstoque, Pagamento, AbonoPonto, SolicitacaoLiberacaoConfianca,
+    LicencaSistema,
 )
 
 LIMITE_TENTATIVAS = 5
@@ -232,7 +233,8 @@ registrar_auditoria_completa(
 # ---------------- CONFIGURAÇÃO DO PORTAL DO CLIENTE ----------------
 registrar_auditoria_completa(
     ConfiguracaoEmpresa,
-    [("nome_fantasia", "Nome da empresa"), ("whatsapp_numero", "WhatsApp"), ("mensagem_boas_vindas", "Mensagem de boas-vindas")],
+    [("nome_fantasia", "Nome da empresa"), ("whatsapp_numero", "WhatsApp"),
+     ("mensagem_boas_vindas", "Mensagem de boas-vindas"), ("cor_primaria", "Cor principal"), ("logo", "Logo")],
     "Configuração do Portal", nome_fn=lambda i: i.nome_fantasia or "Configuração do Portal",
 )
 
@@ -241,6 +243,14 @@ registrar_auditoria_completa(
     Promocao,
     [("titulo", "Título"), ("descricao", "Descrição"), ("ativa", "Ativa")],
     "Promoção", nome_fn=lambda i: i.titulo,
+)
+
+# ---------------- LICENÇA DO SISTEMA (aluguel) ----------------
+registrar_auditoria_completa(
+    LicencaSistema,
+    [("nome_contratante", "Contratante"), ("data_vencimento", "Vencimento"),
+     ("dias_carencia", "Carência (dias)"), ("bloqueado_manualmente", "Bloqueado manualmente")],
+    "Licença do sistema", nome_fn=lambda i: i.nome_contratante or "Licença do Sistema",
 )
 
 # ---------------- JORNADA DE TRABALHO (Ponto) ----------------

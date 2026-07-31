@@ -5,11 +5,13 @@ WhatsApp com a empresa e ver promoções. Login é feito com CPF + senha; a senh
 data de nascimento (os mesmos dados que já ficam no cadastro dele)."""
 
 from datetime import datetime, date, timedelta
+import os
 
 from django.contrib import messages
 from django.contrib.auth.hashers import make_password, check_password
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.utils import timezone
 from django.contrib.auth.decorators import user_passes_test
 
@@ -22,7 +24,7 @@ from reportlab.lib.units import cm
 LIMITE_TENTATIVAS_PORTAL = 5
 MINUTOS_BLOQUEIO_PORTAL = 15
 
-from .models import Cliente, Promocao, ConfiguracaoEmpresa, SolicitacaoLiberacaoConfianca, LogAtividade
+from .models import Cliente, Promocao, ConfiguracaoEmpresa, SolicitacaoLiberacaoConfianca, LogAtividade, LicencaSistema
 from .utils import normalizar
 
 
@@ -301,7 +303,9 @@ def portal_segunda_via_pdf(request):
 @user_passes_test(lambda u: u.is_authenticated and u.role == "admin")
 def promocao_list(request):
     promocoes = Promocao.objects.all()
-    return render(request, "core/promocao_list.html", {"promocoes": promocoes})
+    dominio_producao = os.environ.get("RENDER_EXTERNAL_HOSTNAME", "cto-manager.onrender.com")
+    link_portal = f"https://{dominio_producao}{reverse('portal_login')}"
+    return render(request, "core/promocao_list.html", {"promocoes": promocoes, "link_portal": link_portal})
 
 
 @user_passes_test(lambda u: u.is_authenticated and u.role == "admin")
@@ -363,13 +367,48 @@ def solicitacao_liberacao_atender(request, pk):
 def configuracao_empresa_editar(request):
     config = ConfiguracaoEmpresa.obter()
     if request.method == "POST":
+        if request.POST.get("acao") == "restaurar_padrao":
+            config.logo = None
+            config.cor_primaria = "#2563eb"
+            config.save()
+            messages.success(request, "Logo e cor voltaram ao padrão original.")
+            return redirect("configuracao_empresa_editar")
+
         config.nome_fantasia = request.POST.get("nome_fantasia", "").strip()
         numero = _so_digitos(request.POST.get("whatsapp_numero"))
         if numero and not numero.startswith("55"):
             numero = "55" + numero
         config.whatsapp_numero = numero
         config.mensagem_boas_vindas = request.POST.get("mensagem_boas_vindas", "").strip()
+        config.cor_primaria = request.POST.get("cor_primaria", "#2563eb").strip() or "#2563eb"
+        if request.FILES.get("logo"):
+            config.logo = request.FILES["logo"]
+        if request.POST.get("remover_logo") == "on":
+            config.logo = None
         config.save()
         messages.success(request, "Configuração do Portal do Cliente atualizada!")
         return redirect("configuracao_empresa_editar")
     return render(request, "core/configuracao_empresa_form.html", {"config": config})
+
+
+@user_passes_test(lambda u: u.is_authenticated and u.is_superuser)
+def licenca_editar(request):
+    """Tela de controle do aluguel do sistema — só o dono do sistema (conta de
+    superusuário) enxerga isso. O admin normal da empresa que alugou nem vê
+    esse link no menu."""
+    licenca = LicencaSistema.obter()
+    if request.method == "POST":
+        licenca.nome_contratante = request.POST.get("nome_contratante", "").strip()
+        vencimento = request.POST.get("data_vencimento", "").strip()
+        licenca.data_vencimento = vencimento or None
+        try:
+            licenca.dias_carencia = int(request.POST.get("dias_carencia", 3))
+        except (TypeError, ValueError):
+            licenca.dias_carencia = 3
+        licenca.bloqueado_manualmente = request.POST.get("bloqueado_manualmente") == "on"
+        licenca.mensagem_bloqueio = request.POST.get("mensagem_bloqueio", "").strip()
+        licenca.observacoes = request.POST.get("observacoes", "").strip()
+        licenca.save()
+        messages.success(request, "Licença do sistema atualizada!")
+        return redirect("licenca_editar")
+    return render(request, "core/licenca_form.html", {"licenca": licenca})

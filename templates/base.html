@@ -16,6 +16,14 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="CTO Manager">
 <link rel="apple-touch-icon" href="{% static 'icons/icon-192.png' %}">
+<style>
+:root { --cor-marca: {{ marca.cor_primaria|default:"#2563eb" }}; }
+.logo-icone { background-color: var(--cor-marca) !important; }
+.menu-link.active { background-color: var(--cor-marca) !important; }
+.btn-primary { background-color: var(--cor-marca) !important; border-color: var(--cor-marca) !important; }
+.btn-outline-primary { color: var(--cor-marca) !important; border-color: var(--cor-marca) !important; }
+.btn-outline-primary:hover { background-color: var(--cor-marca) !important; color: #fff !important; }
+</style>
 </head>
 <body>
 {% if user.is_authenticated %}
@@ -27,9 +35,13 @@
 <div class="d-flex">
   <aside class="sidebar text-white p-3" id="sidebarMenu">
     <div class="d-flex align-items-center gap-2 mb-1">
+      {% if marca.logo %}
+      <img src="{{ marca.logo.url }}" alt="{{ marca.nome_fantasia|default:'Logo' }}" style="width:34px;height:34px;border-radius:8px;object-fit:cover;">
+      {% else %}
       <div class="logo-icone"><i class="bi bi-broadcast-pin"></i></div>
+      {% endif %}
       <div>
-        <div class="fw-bold">CTO MANAGER PRO</div>
+        <div class="fw-bold">{{ marca.nome_fantasia|default:"CTO MANAGER PRO" }}</div>
         <div class="small text-secondary">Painel Operacional da Rede</div>
       </div>
     </div>
@@ -61,6 +73,9 @@
     <a class="menu-link {% if request.resolver_match.url_name == 'ponto_admin_painel' or request.resolver_match.url_name == 'ponto_liberar_mais_cedo' or request.resolver_match.url_name == 'jornada_editar' or request.resolver_match.url_name == 'ponto_relatorio' or request.resolver_match.url_name == 'abono_criar' %}active{% endif %}" href="{% url 'ponto_admin_painel' %}"><i class="bi bi-clock-history"></i> Painel de Ponto</a>
     <a class="menu-link {% if request.resolver_match.url_name == 'promocao_list' or request.resolver_match.url_name == 'promocao_create' or request.resolver_match.url_name == 'configuracao_empresa_editar' %}active{% endif %}" href="{% url 'promocao_list' %}"><i class="bi bi-megaphone"></i> Portal do Cliente</a>
     <a class="menu-link" href="{% url 'admin:index' %}"><i class="bi bi-file-earmark-text"></i> Django Admin</a>
+    {% if user.is_superuser %}
+    <a class="menu-link {% if request.resolver_match.url_name == 'licenca_editar' %}active{% endif %}" href="{% url 'licenca_editar' %}"><i class="bi bi-shield-lock"></i> Licença do Sistema</a>
+    {% endif %}
     {% endif %}
     {% else %}
     <div class="menu-secao">TÉCNICO</div>

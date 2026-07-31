@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Plano, CTO, Cliente, Chamado, ContaPagar, ChamadoAnexo, LogAtividade, Pagamento, MovimentacaoReceita, DebitoCongelado, Material, MovimentacaoEstoque, JornadaTrabalho, RegistroPonto, AbonoPonto, LiberacaoExtraPonto, ConfiguracaoEmpresa, Promocao, SolicitacaoLiberacaoConfianca
+from .models import Plano, CTO, Cliente, Chamado, ContaPagar, ChamadoAnexo, LogAtividade, Pagamento, MovimentacaoReceita, DebitoCongelado, Material, MovimentacaoEstoque, JornadaTrabalho, RegistroPonto, AbonoPonto, LiberacaoExtraPonto, ConfiguracaoEmpresa, Promocao, SolicitacaoLiberacaoConfianca, LicencaSistema
 
 
 @admin.register(Plano)
@@ -118,3 +118,8 @@ class ConfiguracaoEmpresaAdmin(admin.ModelAdmin):
 class SolicitacaoLiberacaoConfiancaAdmin(admin.ModelAdmin):
     list_display = ("cliente", "atendida", "criado_em", "atendida_por")
     list_filter = ("atendida",)
+
+
+@admin.register(LicencaSistema)
+class LicencaSistemaAdmin(admin.ModelAdmin):
+    list_display = ("nome_contratante", "data_vencimento", "bloqueado_manualmente")

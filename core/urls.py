@@ -21,6 +21,7 @@ urlpatterns = [
     path("promocoes/<int:pk>/ativar-desativar/", portal_views.promocao_toggle, name="promocao_toggle"),
     path("promocoes/<int:pk>/excluir/", portal_views.promocao_delete, name="promocao_delete"),
     path("portal/configuracao/", portal_views.configuracao_empresa_editar, name="configuracao_empresa_editar"),
+    path("licenca/", portal_views.licenca_editar, name="licenca_editar"),
     path("portal/solicitacoes-liberacao/", portal_views.solicitacao_liberacao_list, name="solicitacao_liberacao_list"),
     path("portal/solicitacoes-liberacao/<int:pk>/atender/", portal_views.solicitacao_liberacao_atender, name="solicitacao_liberacao_atender"),
 

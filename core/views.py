@@ -25,7 +25,7 @@ from django.views.generic import ListView, CreateView, UpdateView, DetailView
 
 from django.db.models import Sum, Q
 
-from .models import Plano, CTO, Cliente, Chamado, ContaPagar, ChamadoAnexo, ChamadoDevolucao, LogAtividade, Pagamento, MovimentacaoReceita, DebitoCongelado, Material, MovimentacaoEstoque, JornadaTrabalho, RegistroPonto, AbonoPonto, LiberacaoExtraPonto
+from .models import Plano, CTO, Cliente, Chamado, ContaPagar, ChamadoAnexo, ChamadoDevolucao, LogAtividade, Pagamento, MovimentacaoReceita, DebitoCongelado, Material, MovimentacaoEstoque, JornadaTrabalho, RegistroPonto, AbonoPonto, LiberacaoExtraPonto, LicencaSistema
 from .forms import ClienteForm, ChamadoForm, ContaPagarForm, CTOForm, PlanoForm, UsuarioCreateForm, UsuarioUpdateForm, DebitoCongeladoForm, NegociarDebitoForm, MaterialForm, EntradaEstoqueForm, SaidaEstoqueForm, JornadaForm, PontoLiberarForm, AbonoForm, LiberacaoExtraForm
 from .decorators import somente_operacao, somente_admin
 from .mixins import SomenteAdminMixin, SomenteOperacaoMixin
@@ -70,6 +70,12 @@ def dashboard(request):
 
     if request.user.role == "admin":
         context["logs_recentes"] = LogAtividade.objects.select_related("usuario")[:15]
+
+    if request.user.is_superuser:
+        licenca = LicencaSistema.obter()
+        dias = licenca.dias_ate_vencer()
+        if dias is not None and dias <= 7:
+            context["licenca_aviso"] = licenca
 
     return render(request, "core/dashboard.html", context)
 

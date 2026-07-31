@@ -208,6 +208,7 @@ MODELOS_AUDITORIA = [
     "Material", "Usuário", "Configuração do Portal", "Promoção", "Jornada de trabalho",
     "Movimentação de estoque", "Pagamento", "Abono de ponto",
     "Pedido de liberação de confiança", "Login no sistema", "Prioridade do chamado alterada",
+    "Licença do sistema",
 ]
 
 

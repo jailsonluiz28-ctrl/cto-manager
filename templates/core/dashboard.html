@@ -2,6 +2,17 @@
 {% block titulo %}Painel Operacional da Rede{% endblock %}
 {% block conteudo %}
 
+{% if licenca_aviso %}
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
+  <i class="bi bi-shield-exclamation fs-5"></i>
+  <div>
+    <strong>Licença do sistema vencendo</strong> —
+    {% if licenca_aviso.esta_bloqueado %}já está bloqueado.{% else %}faltam {{ licenca_aviso.dias_ate_vencer }} dia(s).{% endif %}
+    <a href="{% url 'licenca_editar' %}" class="ms-1">Renovar agora →</a>
+  </div>
+</div>
+{% endif %}
+
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-3"><div class="kpi-card" style="background:#2563eb;"><div class="rotulo">Total de CTOs</div><div class="valor">{{ total_ctos }}</div></div></div>
   <div class="col-6 col-md-3"><div class="kpi-card" style="background:#059669;"><div class="rotulo">Total de Clientes</div><div class="valor">{{ total_clientes }}</div></div></div>

@@ -40,6 +40,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.CurrentUserMiddleware",
+    "core.middleware.LicencaMiddleware",
     "core.middleware.PontoObrigatorioMiddleware",
 ]
 
@@ -56,6 +57,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "core.context_processors.marca_do_sistema",
             ],
         },
     },

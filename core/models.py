@@ -646,7 +646,9 @@ class LiberacaoExtraPonto(models.Model):
 # PORTAL DO CLIENTE
 # ---------------------------------------------------------------------------
 class ConfiguracaoEmpresa(models.Model):
-    """Dados da empresa usados no Portal do Cliente (WhatsApp, nome exibido).
+    """Dados da empresa usados no Portal do Cliente (WhatsApp, nome exibido) e
+    a identidade visual (logo + cor) do sistema inteiro — pra quando alugar
+    pra outra empresa, ela pode trocar a marca sem mexer em código.
     Existe só um registro (padrão de 'configuração única')."""
 
     nome_fantasia = models.CharField(max_length=150, blank=True)
@@ -657,6 +659,14 @@ class ConfiguracaoEmpresa(models.Model):
     mensagem_boas_vindas = models.CharField(
         max_length=255, blank=True,
         help_text="Mensagem curta mostrada no topo do Portal do Cliente (opcional)",
+    )
+    logo = models.ImageField(
+        upload_to="marca/", null=True, blank=True,
+        help_text="Substitui o ícone/nome padrão no menu do sistema e no Portal do Cliente",
+    )
+    cor_primaria = models.CharField(
+        max_length=7, default="#2563eb",
+        help_text="Cor principal do sistema (botões, destaque do menu). Formato: #2563eb",
     )
     atualizado_em = models.DateTimeField(auto_now=True)
 
@@ -717,3 +727,62 @@ class SolicitacaoLiberacaoConfianca(models.Model):
     def __str__(self):
         status = "atendida" if self.atendida else "pendente"
         return f"Liberação de confiança - {self.cliente.nome} ({status})"
+
+
+# ---------------------------------------------------------------------------
+# LICENÇA DO SISTEMA (pra alugar o sistema pra outras empresas)
+# ---------------------------------------------------------------------------
+class LicencaSistema(models.Model):
+    """Controle de aluguel do sistema. Se a data de vencimento passar (mais
+    a carência), o sistema inteiro fica bloqueado pra quem alugou — só quem
+    tem acesso de superusuário (o dono do sistema, não o cliente que alugou)
+    consegue entrar pra ver/editar essa tela e liberar de novo."""
+
+    nome_contratante = models.CharField(
+        max_length=150, blank=True,
+        help_text="Nome da empresa que está alugando o sistema (só pra você identificar)",
+    )
+    data_vencimento = models.DateField(
+        null=True, blank=True,
+        help_text="Depois dessa data (+ carência), o sistema bloqueia sozinho. Deixe em branco pra nunca bloquear.",
+    )
+    dias_carencia = models.PositiveSmallIntegerField(
+        default=3, help_text="Quantos dias depois do vencimento o sistema ainda deixa usar, antes de bloquear",
+    )
+    bloqueado_manualmente = models.BooleanField(
+        default=False, help_text="Bloqueia o sistema na hora, independente da data (ex: pediu pra cancelar)",
+    )
+    mensagem_bloqueio = models.CharField(
+        max_length=255, blank=True,
+        help_text="Mensagem mostrada pra quem tentar acessar o sistema bloqueado (opcional)",
+    )
+    observacoes = models.TextField(blank=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Licença do Sistema"
+        verbose_name_plural = "Licença do Sistema"
+
+    def __str__(self):
+        return self.nome_contratante or "Licença do Sistema"
+
+    @classmethod
+    def obter(cls):
+        obj, _criado = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def esta_bloqueado(self):
+        if self.bloqueado_manualmente:
+            return True
+        if not self.data_vencimento:
+            return False
+        from datetime import timedelta
+        from django.utils import timezone
+        limite = self.data_vencimento + timedelta(days=self.dias_carencia)
+        return timezone.now().date() > limite
+
+    def dias_ate_vencer(self):
+        if not self.data_vencimento:
+            return None
+        from django.utils import timezone
+        return (self.data_vencimento - timezone.now().date()).days

@@ -8,6 +8,16 @@
   </div>
   <a href="{% url 'promocao_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nova promoção</a>
 </div>
+
+<div class="card p-3 mb-3">
+  <div class="fw-semibold small text-muted mb-2"><i class="bi bi-link-45deg"></i> Link do Portal do Cliente — manda esse aqui pro cliente</div>
+  <div class="d-flex gap-2">
+    <input type="text" id="link-portal-cliente" class="form-control" value="{{ link_portal }}" readonly onclick="this.select()">
+    <button type="button" class="btn btn-outline-primary text-nowrap" onclick="copiarLinkPortal()"><i class="bi bi-clipboard"></i> Copiar</button>
+  </div>
+  <div id="link-portal-copiado" class="text-success small mt-1" style="display:none;">Link copiado!</div>
+</div>
+
 <p class="text-muted small">Promoções marcadas como "Ativa" aparecem na tela inicial do Portal do Cliente.</p>
 
 <div class="row g-3">
@@ -33,4 +43,16 @@
   <p class="text-muted">Nenhuma promoção cadastrada ainda.</p>
   {% endfor %}
 </div>
+
+<script>
+function copiarLinkPortal() {
+  const campo = document.getElementById("link-portal-cliente");
+  campo.select();
+  navigator.clipboard.writeText(campo.value).then(function () {
+    const aviso = document.getElementById("link-portal-copiado");
+    aviso.style.display = "block";
+    setTimeout(function () { aviso.style.display = "none"; }, 2000);
+  });
+}
+</script>
 {% endblock %}
