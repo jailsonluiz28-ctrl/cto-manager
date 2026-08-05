@@ -1,9 +1,16 @@
 from django.urls import path
 from . import views
 from . import portal_views
+from . import mikrotik_views
 
 urlpatterns = [
     path("", views.dashboard, name="dashboard"),
+
+    # ---- Integração com Mikrotik ----
+    path("mikrotik/configuracao/", mikrotik_views.configuracao_mikrotik_editar, name="configuracao_mikrotik_editar"),
+    path("clientes/<int:pk>/mikrotik/sincronizar/", mikrotik_views.cliente_mikrotik_sincronizar, name="cliente_mikrotik_sincronizar"),
+    path("clientes/<int:pk>/mikrotik/bloquear/", mikrotik_views.cliente_mikrotik_bloquear, name="cliente_mikrotik_bloquear"),
+    path("clientes/<int:pk>/mikrotik/liberar/", mikrotik_views.cliente_mikrotik_liberar, name="cliente_mikrotik_liberar"),
 
     # ---- Portal do Cliente (área pública) ----
     path("portal/", portal_views.portal_login, name="portal_login"),
@@ -47,6 +54,8 @@ urlpatterns = [
 
     path("planos/", views.PlanoListView.as_view(), name="plano_list"),
     path("planos/novo/", views.PlanoCreateView.as_view(), name="plano_create"),
+    path("planos/<int:pk>/editar/", views.PlanoUpdateView.as_view(), name="plano_update"),
+    path("planos/<int:pk>/excluir/", views.plano_delete, name="plano_delete"),
 
     path("chamados/", views.ChamadoListView.as_view(), name="chamado_list"),
     path("chamados/finalizados/", views.ChamadoFinalizadosListView.as_view(), name="chamado_finalizados"),

@@ -786,3 +786,33 @@ class LicencaSistema(models.Model):
             return None
         from django.utils import timezone
         return (self.data_vencimento - timezone.now().date()).days
+
+
+# ---------------------------------------------------------------------------
+# INTEGRAÇÃO COM MIKROTIK
+# ---------------------------------------------------------------------------
+class ConfiguracaoMikrotik(models.Model):
+    """Dados de acesso ao Mikrotik (API RouterOS), pra criar/bloquear/liberar
+    o PPPoE do cliente e aplicar a velocidade do plano automaticamente."""
+
+    ativo = models.BooleanField(default=False, help_text="Liga/desliga a integração com o Mikrotik")
+    host = models.CharField(max_length=100, blank=True, help_text="IP do Mikrotik (ex: 192.168.88.1)")
+    porta = models.PositiveIntegerField(default=8728, help_text="Porta da API (padrão 8728, ou 8729 se usar SSL)")
+    usuario = models.CharField(max_length=100, default="admin")
+    senha = models.CharField(max_length=100, blank=True)
+    usar_ssl = models.BooleanField(default=False)
+    ultimo_teste_em = models.DateTimeField(null=True, blank=True)
+    ultimo_teste_ok = models.BooleanField(null=True, blank=True)
+    ultimo_teste_mensagem = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        verbose_name = "Configuração do Mikrotik"
+        verbose_name_plural = "Configuração do Mikrotik"
+
+    def __str__(self):
+        return f"Mikrotik ({self.host})" if self.host else "Configuração do Mikrotik"
+
+    @classmethod
+    def obter(cls):
+        obj, _criado = cls.objects.get_or_create(pk=1)
+        return obj

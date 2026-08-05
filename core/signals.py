@@ -14,7 +14,7 @@ from .models import (
     Cliente, CTO, Chamado, Plano, LogAtividade,
     ContaPagar, DebitoCongelado, Material, ConfiguracaoEmpresa, Promocao,
     JornadaTrabalho, MovimentacaoEstoque, Pagamento, AbonoPonto, SolicitacaoLiberacaoConfianca,
-    LicencaSistema,
+    LicencaSistema, ConfiguracaoMikrotik,
 )
 
 LIMITE_TENTATIVAS = 5
@@ -34,7 +34,7 @@ def _registrar(acao, detalhes=""):
 # "Telefone: (81) 3333-0000 → (81) 99999-8888; Status: Ativo em Dia → Suspenso".
 # ---------------------------------------------------------------------------
 
-CAMPOS_SENSIVEIS = {"senha_pppoe", "portal_senha_hash", "password"}
+CAMPOS_SENSIVEIS = {"senha_pppoe", "portal_senha_hash", "password", "senha"}
 
 
 def _valor_legivel(obj, campo):
@@ -251,6 +251,13 @@ registrar_auditoria_completa(
     [("nome_contratante", "Contratante"), ("data_vencimento", "Vencimento"),
      ("dias_carencia", "Carência (dias)"), ("bloqueado_manualmente", "Bloqueado manualmente")],
     "Licença do sistema", nome_fn=lambda i: i.nome_contratante or "Licença do Sistema",
+)
+
+# ---------------- CONFIGURAÇÃO DO MIKROTIK ----------------
+registrar_auditoria_completa(
+    ConfiguracaoMikrotik,
+    [("ativo", "Ativo"), ("host", "Endereço"), ("porta", "Porta"), ("usuario", "Usuário"), ("senha", "Senha"), ("usar_ssl", "Usa SSL")],
+    "Configuração do Mikrotik", nome_fn=lambda i: f"Mikrotik ({i.host})" if i.host else "Configuração do Mikrotik",
 )
 
 # ---------------- JORNADA DE TRABALHO (Ponto) ----------------

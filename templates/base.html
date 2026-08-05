@@ -72,6 +72,7 @@
     <a class="menu-link {% if request.resolver_match.url_name == 'backup_view' %}active{% endif %}" href="{% url 'backup_view' %}"><i class="bi bi-cloud-arrow-down"></i> Backup</a>
     <a class="menu-link {% if request.resolver_match.url_name == 'ponto_admin_painel' or request.resolver_match.url_name == 'ponto_liberar_mais_cedo' or request.resolver_match.url_name == 'jornada_editar' or request.resolver_match.url_name == 'ponto_relatorio' or request.resolver_match.url_name == 'abono_criar' %}active{% endif %}" href="{% url 'ponto_admin_painel' %}"><i class="bi bi-clock-history"></i> Painel de Ponto</a>
     <a class="menu-link {% if request.resolver_match.url_name == 'promocao_list' or request.resolver_match.url_name == 'promocao_create' or request.resolver_match.url_name == 'configuracao_empresa_editar' %}active{% endif %}" href="{% url 'promocao_list' %}"><i class="bi bi-megaphone"></i> Portal do Cliente</a>
+    <a class="menu-link {% if request.resolver_match.url_name == 'configuracao_mikrotik_editar' %}active{% endif %}" href="{% url 'configuracao_mikrotik_editar' %}"><i class="bi bi-router"></i> Configuração do Mikrotik</a>
     {% endif %}
     {% else %}
     <div class="menu-secao">TÉCNICO</div>

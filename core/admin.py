@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Plano, CTO, Cliente, Chamado, ContaPagar, ChamadoAnexo, LogAtividade, Pagamento, MovimentacaoReceita, DebitoCongelado, Material, MovimentacaoEstoque, JornadaTrabalho, RegistroPonto, AbonoPonto, LiberacaoExtraPonto, ConfiguracaoEmpresa, Promocao, SolicitacaoLiberacaoConfianca, LicencaSistema
+from .models import Plano, CTO, Cliente, Chamado, ContaPagar, ChamadoAnexo, LogAtividade, Pagamento, MovimentacaoReceita, DebitoCongelado, Material, MovimentacaoEstoque, JornadaTrabalho, RegistroPonto, AbonoPonto, LiberacaoExtraPonto, ConfiguracaoEmpresa, Promocao, SolicitacaoLiberacaoConfianca, LicencaSistema, ConfiguracaoMikrotik
 
 
 @admin.register(Plano)
@@ -123,3 +123,8 @@ class SolicitacaoLiberacaoConfiancaAdmin(admin.ModelAdmin):
 @admin.register(LicencaSistema)
 class LicencaSistemaAdmin(admin.ModelAdmin):
     list_display = ("nome_contratante", "data_vencimento", "bloqueado_manualmente")
+
+
+@admin.register(ConfiguracaoMikrotik)
+class ConfiguracaoMikrotikAdmin(admin.ModelAdmin):
+    list_display = ("host", "ativo", "ultimo_teste_ok", "ultimo_teste_em")

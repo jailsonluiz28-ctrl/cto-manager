@@ -142,6 +142,31 @@ class ClienteListView(SomenteOperacaoMixin, ListView):
         return context
 
 
+def _mikrotik_auto_sync(request, cliente, motivo):
+    """Sincroniza automaticamente com o Mikrotik (se a integração estiver
+    ligada e o cliente tiver Login PPPoE + Plano) — usado ao criar cliente,
+    e ao editar quando o plano ou o status mudam."""
+    if not (cliente.login_pppoe and cliente.plano):
+        return
+    from .models import ConfiguracaoMikrotik
+    if not ConfiguracaoMikrotik.obter().ativo:
+        return
+    try:
+        from .mikrotik_utils import sincronizar_cliente
+        mensagem = sincronizar_cliente(cliente)
+        messages.success(request, f"Mikrotik: {mensagem}")
+        LogAtividade.objects.create(
+            usuario=request.user, acao="Mikrotik - Sincronizado",
+            detalhes=f"{cliente.nome} — {mensagem} ({motivo})",
+        )
+    except Exception as e:
+        messages.warning(request, f"Mikrotik não pôde ser atualizado agora: {e}")
+        LogAtividade.objects.create(
+            usuario=request.user, acao="Mikrotik - Sincronização falhou",
+            detalhes=f"{cliente.nome} — {e} ({motivo})",
+        )
+
+
 class ClienteCreateView(SomenteOperacaoMixin, CreateView):
     model = Cliente
     form_class = ClienteForm
@@ -157,6 +182,7 @@ class ClienteCreateView(SomenteOperacaoMixin, CreateView):
             criado_por=self.request.user,
         )
         messages.success(self.request, "Cliente cadastrado com sucesso!")
+        _mikrotik_auto_sync(self.request, self.object, "automático ao cadastrar")
         return response
 
 
@@ -170,6 +196,7 @@ class ClienteUpdateView(SomenteOperacaoMixin, UpdateView):
         cliente_antigo = Cliente.objects.get(pk=self.object.pk)
         valor_antigo = cliente_antigo.valor_mensal()
         plano_antigo_id = cliente_antigo.plano_id
+        status_antigo = cliente_antigo.status
         endereco_antigo = (
             cliente_antigo.cep, cliente_antigo.logradouro, cliente_antigo.numero,
             cliente_antigo.bairro, cliente_antigo.cidade, cliente_antigo.estado,
@@ -193,6 +220,8 @@ class ClienteUpdateView(SomenteOperacaoMixin, UpdateView):
                 criado_por=self.request.user,
             )
         messages.success(self.request, "Dados do cliente atualizados!")
+        if self.object.plano_id != plano_antigo_id or self.object.status != status_antigo:
+            _mikrotik_auto_sync(self.request, self.object, "automático ao editar (plano/status mudou)")
         return response
 
 
@@ -243,6 +272,7 @@ def cliente_cancelar(request, pk):
             criado_por=request.user,
         )
         messages.success(request, f"Cliente \"{cliente.nome}\" marcado como cancelado.")
+        _mikrotik_auto_sync(request, cliente, "automático ao cancelar")
         return redirect("cliente_list")
     return render(request, "core/cliente_cancelar.html", {"cliente": cliente})
 
@@ -365,6 +395,32 @@ class PlanoCreateView(SomenteOperacaoMixin, CreateView):
     def form_valid(self, form):
         messages.success(self.request, "Plano cadastrado com sucesso!")
         return super().form_valid(form)
+
+
+class PlanoUpdateView(SomenteOperacaoMixin, UpdateView):
+    model = Plano
+    form_class = PlanoForm
+    template_name = "core/plano_form.html"
+    success_url = reverse_lazy("plano_list")
+
+    def form_valid(self, form):
+        messages.success(self.request, "Plano atualizado com sucesso!")
+        return super().form_valid(form)
+
+
+@user_passes_test(lambda u: u.is_authenticated and u.role in ("admin", "operador"))
+def plano_delete(request, pk):
+    plano = get_object_or_404(Plano, pk=pk)
+    if request.method == "POST":
+        total_clientes = plano.clientes.count()
+        if total_clientes > 0:
+            messages.error(request, f"Não é possível excluir — {total_clientes} cliente(s) usam esse plano. Mude o plano deles primeiro.")
+            return redirect("plano_list")
+        nome = plano.nome
+        plano.delete()
+        messages.success(request, f"Plano \"{nome}\" excluído.")
+        return redirect("plano_list")
+    return render(request, "core/plano_confirm_delete.html", {"plano": plano})
 
 
 # ---------------------------------------------------------------------------

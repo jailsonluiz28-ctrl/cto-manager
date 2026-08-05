@@ -6,3 +6,4 @@ gunicorn==22.0.0
 whitenoise==6.7.0
 dj-database-url==2.2.0
 requests==2.32.3
+RouterOS-api==0.21.0

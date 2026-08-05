@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block titulo %}Configuração do Mikrotik{% endblock %}
+{% block conteudo %}
+<div class="card p-4 mb-3" style="max-width:560px;">
+  <form method="post">
+    {% csrf_token %}
+    <div class="mb-3 form-check">
+      <input type="checkbox" name="ativo" class="form-check-input" id="ativo" {% if config.ativo %}checked{% endif %}>
+      <label class="form-check-label" for="ativo">Integração ativa</label>
+      <div class="form-text">Desligado por padrão. Só liga depois de testar a conexão com sucesso.</div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label small">Endereço (IP) do Mikrotik</label>
+      <input type="text" name="host" class="form-control" value="{{ config.host }}" placeholder="Ex: 192.168.88.1">
+    </div>
+    <div class="row">
+      <div class="col-6 mb-3">
+        <label class="form-label small">Porta da API</label>
+        <input type="number" name="porta" class="form-control" value="{{ config.porta }}">
+        <div class="form-text">Padrão: 8728 (ou 8729 se usar SSL)</div>
+      </div>
+      <div class="col-6 mb-3">
+        <label class="form-label small">Usuário</label>
+        <input type="text" name="usuario" class="form-control" value="{{ config.usuario }}">
+      </div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label small">Senha</label>
+      <input type="password" name="senha" class="form-control" placeholder="{% if config.senha %}Deixe em branco pra manter a atual{% else %}Sem senha cadastrada ainda{% endif %}">
+    </div>
+    <div class="mb-3 form-check">
+      <input type="checkbox" name="usar_ssl" class="form-check-input" id="usar_ssl" {% if config.usar_ssl %}checked{% endif %}>
+      <label class="form-check-label" for="usar_ssl">Usar SSL (porta 8729)</label>
+    </div>
+
+    {% if config.ultimo_teste_em %}
+    <div class="alert {% if config.ultimo_teste_ok %}alert-success{% else %}alert-danger{% endif %} small">
+      <strong>Último teste ({{ config.ultimo_teste_em|date:"d/m/Y H:i" }}):</strong> {{ config.ultimo_teste_mensagem }}
+    </div>
+    {% endif %}
+
+    <div class="d-flex justify-content-between">
+      <button type="submit" name="acao" value="testar" class="btn btn-outline-secondary"><i class="bi bi-plug"></i> Testar conexão</button>
+      <button type="submit" class="btn btn-primary">Salvar</button>
+    </div>
+  </form>
+</div>
+
+<div class="card p-4" style="max-width:560px;">
+  <h6 class="mb-2"><i class="bi bi-info-circle"></i> Como usar</h6>
+  <p class="small text-muted mb-2">Depois de configurar e testar a conexão aqui, vai em <strong>Clientes</strong> — cada cliente com "Login PPPoE" preenchido ganha os botões:</p>
+  <ul class="small text-muted mb-0">
+    <li><strong>Sincronizar</strong> — cria/atualiza o login dele no Mikrotik com a velocidade do plano dele</li>
+    <li><strong>Bloquear</strong> — desliga o PPPoE dele no Mikrotik na hora (derruba se estiver conectado)</li>
+    <li><strong>Liberar</strong> — liga de volta</li>
+  </ul>
+</div>
+{% endblock %}

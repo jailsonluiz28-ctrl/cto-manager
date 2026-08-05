@@ -44,6 +44,20 @@
           <a href="{% url 'cliente_historico' c.pk %}" class="btn btn-sm btn-outline-info" title="Histórico completo"><i class="bi bi-clock-history"></i></a>
           <a href="{% url 'chamado_create' %}?cliente={{ c.pk }}" class="btn btn-sm btn-outline-primary" title="Abrir chamado para este cliente"><i class="bi bi-headset"></i></a>
           <a href="{% url 'cliente_update' c.pk %}" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
+          {% if c.login_pppoe %}
+          <form method="post" action="{% url 'cliente_mikrotik_sincronizar' c.pk %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-success" title="Sincronizar velocidade/status no Mikrotik"><i class="bi bi-arrow-repeat"></i></button>
+          </form>
+          <form method="post" action="{% url 'cliente_mikrotik_bloquear' c.pk %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-danger" title="Bloquear PPPoE no Mikrotik" onclick="return confirm('Bloquear o PPPoE de {{ c.nome|escapejs }} no Mikrotik agora?');"><i class="bi bi-lock"></i></button>
+          </form>
+          <form method="post" action="{% url 'cliente_mikrotik_liberar' c.pk %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-success" title="Liberar PPPoE no Mikrotik"><i class="bi bi-unlock"></i></button>
+          </form>
+          {% endif %}
           {% if c.status != "cancelado" %}
           <a href="{% url 'cliente_cancelar' c.pk %}" class="btn btn-sm btn-outline-warning" title="Cancelar cliente"><i class="bi bi-slash-circle"></i></a>
           {% endif %}
