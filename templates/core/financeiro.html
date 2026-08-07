@@ -81,6 +81,7 @@
     <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#receber">Cobrança de {{ mes_ref|date:"F/Y" }}</a></li>
     <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#inadimplencia">Inadimplência</a></li>
     <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#fluxo">Fluxo de Caixa</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#recebido-dia">Recebido por Dia</a></li>
   </ul>
   <div class="d-flex gap-2">
     <a href="{% url 'financeiro_export_excel' %}" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-excel"></i> Excel</a>
@@ -144,6 +145,13 @@
       <canvas id="graficoFluxo" height="90"></canvas>
     </div>
   </div>
+
+  <div class="tab-pane fade" id="recebido-dia">
+    <div class="card p-3">
+      <h6 class="mb-3">Quanto entrou por dia — {{ mes_ref|date:"F/Y" }}</h6>
+      <canvas id="graficoRecebidoDia" height="90"></canvas>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
@@ -158,22 +166,54 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   const ctx = document.getElementById("graficoFluxo");
-  if (!ctx) return;
-  new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels: {{ meses_labels|safe }},
-      datasets: [
-        { label: "Entradas (recebido)", data: {{ entradas|safe }}, backgroundColor: "#059669" },
-        { label: "Saídas (contas)", data: {{ saidas|safe }}, backgroundColor: "#dc2626" },
-      ],
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { position: "bottom" } },
-      scales: { y: { beginAtZero: true } },
-    },
-  });
+  if (ctx) {
+    new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: {{ meses_labels|safe }},
+        datasets: [
+          { label: "Entradas (recebido)", data: {{ entradas|safe }}, backgroundColor: "#059669" },
+          { label: "Saídas (contas)", data: {{ saidas|safe }}, backgroundColor: "#dc2626" },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: "bottom" } },
+        scales: { y: { beginAtZero: true } },
+      },
+    });
+  }
+
+  const ctxDia = document.getElementById("graficoRecebidoDia");
+  if (ctxDia) {
+    const qtdsDia = {{ qtds_dia|safe }};
+    new Chart(ctxDia, {
+      type: "bar",
+      data: {
+        labels: {{ dias_labels|safe }},
+        datasets: [
+          { label: "Recebido no dia (R$)", data: {{ valores_dia|safe }}, backgroundColor: "#2563eb" },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function (contexto) {
+                const qtd = qtdsDia[contexto.dataIndex];
+                const valor = contexto.parsed.y.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+                if (!qtd) return "Nenhum pagamento nesse dia";
+                return "R$ " + valor + " — " + qtd + (qtd === 1 ? " cliente" : " clientes");
+              },
+            },
+          },
+        },
+        scales: { y: { beginAtZero: true } },
+      },
+    });
+  }
 });
 </script>
 {% endblock %}

@@ -1,9 +1,12 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.utils import timezone
-from core.models import Plano, CTO, Cliente, Chamado, ContaPagar, Pagamento, DebitoCongelado
+from core.models import (
+    Plano, CTO, Cliente, Chamado, ContaPagar, Pagamento, DebitoCongelado,
+    Material, MovimentacaoEstoque, RetiradaMaterial, RegistroPonto,
+)
 
 User = get_user_model()
 
@@ -181,8 +184,142 @@ class Command(BaseCommand):
                 debito.conta_pagar_gerada = conta
                 debito.save()
 
+        # ---------------------------------------------------------------
+        # Dados extras de demonstração: mais um técnico, mais um operador,
+        # chamados concluídos com tempo registrado, ponto batido, materiais
+        # de estoque e retiradas — pra já aparecer preenchido nos relatórios
+        # sem precisar cadastrar nada na mão.
+        # ---------------------------------------------------------------
+        tecnico2, criado = User.objects.get_or_create(
+            username="tecnico2", defaults={"role": "tecnico", "first_name": "Roberto", "last_name": "Alves"}
+        )
+        if criado:
+            tecnico2.set_password("tecnico123")
+            tecnico2.save()
+            tecnico2.groups.add(grupo_tecnico)
+            self.stdout.write(self.style.SUCCESS("Usuário tecnico2/tecnico123 criado"))
+
+        operador2, criado = User.objects.get_or_create(
+            username="operador2", defaults={"role": "operador", "first_name": "Fernanda", "last_name": "Costa"}
+        )
+        if criado:
+            operador2.set_password("operador123")
+            operador2.save()
+            operador2.groups.add(grupo_operador)
+            self.stdout.write(self.style.SUCCESS("Usuário operador2/operador123 criado"))
+
+        operador1 = User.objects.filter(username="operador1").first()
+        tecnicos_demo = [tecnico, tecnico2]
+        operadores_demo = [o for o in [operador1, operador2] if o]
+
+        # 5 chamados concluídos (com tempo de atendimento) pra cada técnico
+        agora = timezone.now()
+        for idx_t, tec in enumerate(tecnicos_demo):
+            for i in range(5):
+                cliente_c = clientes[(idx_t * 5 + i) % len(clientes)]
+                tipo_c = tipos[i % len(tipos)]
+                dias_atras = 2 + i * 3
+                inicio = agora - timedelta(days=dias_atras, hours=1)
+                duracao_min = 25 + (i * 15) + (idx_t * 5)
+                fim = inicio + timedelta(minutes=duracao_min)
+                Chamado.objects.get_or_create(
+                    cliente=cliente_c, tipo=tipo_c, tecnico=tec, status="concluido",
+                    defaults={
+                        "prioridade": prioridades[i % len(prioridades)],
+                        "aberto_por": operadores_demo[i % len(operadores_demo)] if operadores_demo else None,
+                        "descricao": "Chamado de exemplo (dados de demonstração).",
+                        "observacao_fechamento": "Atendimento concluído com sucesso.",
+                        "pego_em": inicio,
+                        "atendimento_iniciado_em": inicio,
+                        "concluido_em": fim,
+                    },
+                )
+
+        # Ponto batido nos últimos dias, pra cada técnico (pra "Horas de ponto no mês" aparecer)
+        for tec in tecnicos_demo:
+            for dias_atras in [2, 4, 6, 8, 10]:
+                dia = (agora - timedelta(days=dias_atras)).date()
+                if dia.month != agora.month or dia.year != agora.year:
+                    continue
+                for tipo_p, hora, minuto in [("entrada", 8, 0), ("saida_almoco", 12, 0), ("volta_almoco", 13, 0), ("saida", 17, 0)]:
+                    dt = timezone.make_aware(datetime(dia.year, dia.month, dia.day, hora, minuto))
+                    RegistroPonto.objects.get_or_create(usuario=tec, tipo=tipo_p, data_hora=dt)
+
+        # Materiais de estoque de exemplo, já com saldo (entrada inicial)
+        materiais_dados = [
+            ("Cabo de fibra óptica", "m", 100),
+            ("Conector SC/APC", "un", 20),
+            ("ONU/ONT", "un", 5),
+            ("Roteador Wi-Fi", "un", 5),
+            ("Bobina de fibra 1km", "rolo", 2),
+        ]
+        materiais_demo = []
+        for nome, unidade, minimo in materiais_dados:
+            material, _ = Material.objects.get_or_create(
+                nome=nome, defaults={"unidade_medida": unidade, "estoque_minimo": minimo},
+            )
+            materiais_demo.append(material)
+            if not material.movimentacoes.filter(tipo="entrada").exists():
+                MovimentacaoEstoque.objects.create(
+                    material=material, tipo="entrada", quantidade=minimo * 10,
+                    observacao="Compra inicial de exemplo", registrado_por=None,
+                )
+
+        # Retiradas de material de exemplo pros técnicos (uma confirmada, uma pendente)
+        if not RetiradaMaterial.objects.exists():
+            retirada1 = RetiradaMaterial.objects.create(
+                tecnico=tecnico, registrado_por=operador1, observacao="Instalação nova - exemplo",
+                confirmado=True, confirmado_em=agora - timedelta(days=3),
+            )
+            MovimentacaoEstoque.objects.create(
+                material=materiais_demo[0], tipo="saida", quantidade=50, tecnico=tecnico,
+                registrado_por=operador1, retirada=retirada1,
+            )
+            MovimentacaoEstoque.objects.create(
+                material=materiais_demo[1], tipo="saida", quantidade=4, tecnico=tecnico,
+                registrado_por=operador1, retirada=retirada1,
+            )
+            MovimentacaoEstoque.objects.create(
+                material=materiais_demo[2], tipo="saida", quantidade=1, tecnico=tecnico,
+                registrado_por=operador1, retirada=retirada1,
+            )
+
+            retirada2 = RetiradaMaterial.objects.create(
+                tecnico=tecnico2, registrado_por=operador1, observacao="Troca de ONU - exemplo",
+            )
+            MovimentacaoEstoque.objects.create(
+                material=materiais_demo[2], tipo="saida", quantidade=1, tecnico=tecnico2,
+                registrado_por=operador1, retirada=retirada2,
+            )
+            MovimentacaoEstoque.objects.create(
+                material=materiais_demo[1], tipo="saida", quantidade=2, tecnico=tecnico2,
+                registrado_por=operador1, retirada=retirada2,
+            )
+
+        # Chamados de exemplo pendentes há alguns dias (pra testar o selo
+        # "Cliente há X dias sem suporte"), sem técnico atribuído
+        exemplos_pendentes = [
+            (clientes[0], "sem_sinal", "alta", 1),
+            (clientes[1], "lentidao", "media", 3),
+            (clientes[2], "equipamento", "baixa", 5),
+        ]
+        for cliente_p, tipo_p, prioridade_p, dias_atras_p in exemplos_pendentes:
+            chamado_p, criado_p = Chamado.objects.get_or_create(
+                cliente=cliente_p, tipo=tipo_p, status="aberto", tecnico=None,
+                defaults={
+                    "prioridade": prioridade_p,
+                    "aberto_por": operador1,
+                    "descricao": "Chamado de exemplo pendente há alguns dias (dados de demonstração).",
+                },
+            )
+            if criado_p:
+                data_passada = agora - timedelta(days=dias_atras_p, hours=2)
+                Chamado.objects.filter(pk=chamado_p.pk).update(criado_em=data_passada)
+
         self.stdout.write(self.style.SUCCESS("Dados de exemplo criados com sucesso!"))
         self.stdout.write("Logins de teste:")
         self.stdout.write("  admin / admin123  (Administrador)")
         self.stdout.write("  operador1 / operador123  (Operador)")
+        self.stdout.write("  operador2 / operador123  (Operador)")
         self.stdout.write("  tecnico1 / tecnico123  (Técnico)")
+        self.stdout.write("  tecnico2 / tecnico123  (Técnico)")

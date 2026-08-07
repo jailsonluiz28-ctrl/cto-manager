@@ -74,6 +74,7 @@ urlpatterns = [
     path("meus-chamados/<int:pk>/avancar/", views.avancar_chamado, name="avancar_chamado"),
     path("meus-chamados/<int:pk>/cliente-ausente/", views.chamado_cliente_ausente, name="chamado_cliente_ausente"),
     path("meus-chamados/<int:pk>/finalizar/", views.finalizar_chamado, name="finalizar_chamado"),
+    path("retiradas-material/<int:pk>/confirmar/", views.retirada_material_confirmar, name="retirada_material_confirmar"),
 
     path("financeiro/", views.financeiro, name="financeiro"),
     path("financeiro/inadimplentes/", views.clientes_inadimplentes_view, name="clientes_inadimplentes"),

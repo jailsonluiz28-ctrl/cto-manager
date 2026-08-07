@@ -223,6 +223,17 @@ class Chamado(models.Model):
 
     DISTANCIA_ALERTA_METROS = 300
 
+    def dias_sem_suporte(self):
+        """Quantos dias de calendário se passaram desde que o chamado foi
+        aberto, sem ter sido concluído/cancelado ainda. Conta por virada de
+        dia (00:00), não por 24h corridas — um chamado aberto às 23h50 e
+        ainda não atendido às 00h10 já conta como 1 dia."""
+        if self.status in ("concluido", "cancelado"):
+            return 0
+        hoje = timezone.localdate()
+        dia_abertura = timezone.localtime(self.criado_em).date()
+        return max(0, (hoje - dia_abertura).days)
+
     def duracao_atendimento(self):
         inicio = self.atendimento_iniciado_em or self.pego_em
         if inicio and self.concluido_em:
@@ -427,8 +438,8 @@ class Material(models.Model):
 
     nome = models.CharField(max_length=150)
     unidade_medida = models.CharField(max_length=10, choices=UNIDADE_CHOICES, default="un")
-    estoque_minimo = models.DecimalField(
-        max_digits=10, decimal_places=2, default=0,
+    estoque_minimo = models.PositiveIntegerField(
+        default=0,
         help_text="Avisa quando o saldo ficar igual ou abaixo deste valor (deixe 0 pra não avisar)",
     )
     ativo = models.BooleanField(default=True)
@@ -457,6 +468,32 @@ class Material(models.Model):
         return f"{self.nome} ({self.get_unidade_medida_display()})"
 
 
+class RetiradaMaterial(models.Model):
+    """Uma retirada pode ter vários materiais de uma vez (o 'carrinho'). Esse
+    é o cabeçalho — cada item da retirada vira uma MovimentacaoEstoque ligada
+    a esse registro. O técnico confirma que recebeu de verdade depois."""
+
+    tecnico = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="retiradas_material",
+        limit_choices_to={"role__in": ["tecnico", "admin"]},
+    )
+    registrado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    observacao = models.CharField(max_length=255, blank=True)
+    confirmado = models.BooleanField(default=False)
+    confirmado_em = models.DateTimeField(null=True, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+        verbose_name = "Retirada de Material"
+        verbose_name_plural = "Retiradas de Material"
+
+    def __str__(self):
+        return f"Retirada de {self.tecnico} em {self.criado_em:%d/%m/%Y}"
+
+
 class MovimentacaoEstoque(models.Model):
     TIPO_CHOICES = [
         ("entrada", "Entrada (Compra)"),
@@ -474,6 +511,10 @@ class MovimentacaoEstoque(models.Model):
     chamado = models.ForeignKey(
         Chamado, on_delete=models.SET_NULL, null=True, blank=True, related_name="materiais_usados",
         help_text="Chamado relacionado (opcional)",
+    )
+    retirada = models.ForeignKey(
+        RetiradaMaterial, on_delete=models.CASCADE, null=True, blank=True, related_name="itens",
+        help_text="Lote de retirada (quando feita pelo carrinho, com vários materiais de uma vez)",
     )
     observacao = models.CharField(max_length=255, blank=True)
     registrado_por = models.ForeignKey(

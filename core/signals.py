@@ -14,7 +14,7 @@ from .models import (
     Cliente, CTO, Chamado, Plano, LogAtividade,
     ContaPagar, DebitoCongelado, Material, ConfiguracaoEmpresa, Promocao,
     JornadaTrabalho, MovimentacaoEstoque, Pagamento, AbonoPonto, SolicitacaoLiberacaoConfianca,
-    LicencaSistema, ConfiguracaoMikrotik,
+    LicencaSistema, ConfiguracaoMikrotik, RetiradaMaterial,
 )
 
 LIMITE_TENTATIVAS = 5
@@ -268,6 +268,13 @@ registrar_auditoria_completa(
      ("sabado_ativo", "Trabalha sábado"), ("sabado_entrada", "Entrada sábado"),
      ("sabado_saida", "Saída sábado"), ("tolerancia_minutos", "Tolerância (min)")],
     "Jornada de trabalho", nome_fn=lambda i: str(i.usuario),
+)
+
+# ---------------- RETIRADA DE MATERIAL (lote/carrinho) ----------------
+registrar_auditoria_completa(
+    RetiradaMaterial,
+    [("confirmado", "Confirmado pelo técnico")],
+    "Retirada de material", nome_fn=lambda i: f"{i.tecnico} — {i.criado_em:%d/%m/%Y}",
 )
 
 # ---------------- Registros que só fazem sentido "criados" (raramente editados) ----------------

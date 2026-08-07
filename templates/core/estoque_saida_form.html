@@ -6,23 +6,117 @@
   <li class="nav-item"><a class="nav-link active" href="{% url 'estoque_saida' %}">Retirar Material</a></li>
   <li class="nav-item"><a class="nav-link" href="{% url 'estoque_historico' %}">Histórico</a></li>
 </ul>
-<div class="card p-4" style="max-width:500px;">
-  <p class="text-muted small">Use aqui quando liberar material do estoque para um técnico (ou administrador) usar em campo (ex: cortou 300m de fibra, entregou 4 conectores). O saldo é descontado automaticamente.</p>
-  <form method="post">
+
+<div class="card p-4" style="max-width:560px;">
+  <p class="text-muted small">Use aqui quando liberar material do estoque para um técnico (ou administrador) usar em campo. Pode adicionar quantos materiais precisar antes de confirmar — o saldo é descontado automaticamente.</p>
+
+  <form method="post" id="form-retirada">
     {% csrf_token %}
-    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
-    {% for field in form %}
+    <input type="hidden" name="itens_json" id="itens_json" value="[]">
+
     <div class="mb-3">
-      <label class="form-label small">{{ field.label }}</label>
-      {{ field }}
-      {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-      {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+      <label class="form-label small">Material</label>
+      <select id="select-material" class="form-select">
+        <option value="">Escolha um material</option>
+        {% for m in materiais %}<option value="{{ m.id }}">{{ m.nome }} (saldo: {{ m.saldo_atual }} {{ m.get_unidade_medida_display }})</option>{% endfor %}
+      </select>
     </div>
-    {% endfor %}
+
+    <div class="d-flex gap-2 mb-3">
+      <input type="number" id="input-quantidade" class="form-control" placeholder="Quantidade" step="0.01" min="0.01" style="max-width:160px;">
+      <button type="button" id="btn-adicionar" class="btn btn-outline-primary text-nowrap"><i class="bi bi-plus-lg"></i> Adicionar à lista</button>
+    </div>
+    <div id="erro-item" class="text-danger small mb-2" style="display:none;"></div>
+
+    <div id="lista-itens" class="mb-3"></div>
+
+    <div class="mb-3">
+      <label class="form-label small">Liberado para</label>
+      <select name="tecnico" class="form-select" required>
+        <option value="">----------</option>
+        {% for t in tecnicos %}<option value="{{ t.id }}">{{ t.get_full_name|default:t.username }}</option>{% endfor %}
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label small">Observação (opcional)</label>
+      <input type="text" name="observacao" class="form-control">
+    </div>
+
     <div class="d-flex gap-2 justify-content-end">
       <a href="{% url 'material_list' %}" class="btn btn-outline-secondary">Cancelar</a>
-      <button class="btn btn-danger" type="submit"><i class="bi bi-box-arrow-up"></i> Registrar retirada</button>
+      <button class="btn btn-danger" type="submit" id="btn-confirmar"><i class="bi bi-box-arrow-up"></i> Registrar retirada</button>
     </div>
   </form>
 </div>
+
+<script>
+const materiais = {{ materiais_json|safe }};
+let carrinho = [];
+
+function formatarNumero(n) {
+  return Number(n).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+}
+
+function atualizarLista() {
+  const div = document.getElementById("lista-itens");
+  if (carrinho.length === 0) {
+    div.innerHTML = "";
+    document.getElementById("itens_json").value = "[]";
+    document.getElementById("btn-confirmar").innerHTML = '<i class="bi bi-box-arrow-up"></i> Registrar retirada';
+    return;
+  }
+  let html = '<p class="text-muted small mb-2">Itens dessa retirada</p>';
+  carrinho.forEach(function (item, i) {
+    html += '<div class="d-flex justify-content-between align-items-center bg-light rounded px-3 py-2 mb-2">' +
+      '<span>' + formatarNumero(item.quantidade) + 'x ' + item.nome + '</span>' +
+      '<button type="button" class="btn btn-sm btn-outline-danger" onclick="removerItem(' + i + ')"><i class="bi bi-x-lg"></i></button>' +
+      '</div>';
+  });
+  div.innerHTML = html;
+  document.getElementById("itens_json").value = JSON.stringify(
+    carrinho.map(function (item) { return { material_id: item.id, quantidade: item.quantidade }; })
+  );
+  document.getElementById("btn-confirmar").innerHTML =
+    '<i class="bi bi-box-arrow-up"></i> Registrar retirada (' + carrinho.length + (carrinho.length === 1 ? ' item)' : ' itens)');
+}
+
+function removerItem(i) {
+  carrinho.splice(i, 1);
+  atualizarLista();
+}
+
+document.getElementById("btn-adicionar").addEventListener("click", function () {
+  const erroDiv = document.getElementById("erro-item");
+  erroDiv.style.display = "none";
+  const materialId = document.getElementById("select-material").value;
+  const quantidade = parseFloat(document.getElementById("input-quantidade").value);
+
+  if (!materialId) { erroDiv.textContent = "Escolhe um material primeiro."; erroDiv.style.display = "block"; return; }
+  if (!quantidade || quantidade <= 0) { erroDiv.textContent = "Digita uma quantidade válida."; erroDiv.style.display = "block"; return; }
+
+  const material = materiais.find(function (m) { return String(m.id) === String(materialId); });
+  const jaNoCarrinho = carrinho.filter(function (i) { return String(i.id) === String(materialId); })
+    .reduce(function (soma, i) { return soma + i.quantidade; }, 0);
+  if (quantidade + jaNoCarrinho > material.saldo) {
+    erroDiv.textContent = "Estoque insuficiente: só tem " + formatarNumero(material.saldo) + " " + material.unidade + " de \"" + material.nome + "\" disponível.";
+    erroDiv.style.display = "block";
+    return;
+  }
+
+  carrinho.push({ id: material.id, nome: material.nome, quantidade: quantidade });
+  document.getElementById("select-material").value = "";
+  document.getElementById("input-quantidade").value = "";
+  atualizarLista();
+});
+
+document.getElementById("form-retirada").addEventListener("submit", function (e) {
+  if (carrinho.length === 0) {
+    e.preventDefault();
+    const erroDiv = document.getElementById("erro-item");
+    erroDiv.textContent = "Adiciona pelo menos um material à lista antes de confirmar.";
+    erroDiv.style.display = "block";
+  }
+});
+</script>
 {% endblock %}

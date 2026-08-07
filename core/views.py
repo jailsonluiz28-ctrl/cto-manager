@@ -1,4 +1,5 @@
 import json
+from decimal import Decimal, InvalidOperation
 import shutil
 from datetime import date, datetime, timedelta
 
@@ -23,9 +24,9 @@ from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views.generic import ListView, CreateView, UpdateView, DetailView
 
-from django.db.models import Sum, Q
+from django.db.models import Sum, Q, Count
 
-from .models import Plano, CTO, Cliente, Chamado, ContaPagar, ChamadoAnexo, ChamadoDevolucao, LogAtividade, Pagamento, MovimentacaoReceita, DebitoCongelado, Material, MovimentacaoEstoque, JornadaTrabalho, RegistroPonto, AbonoPonto, LiberacaoExtraPonto, LicencaSistema
+from .models import Plano, CTO, Cliente, Chamado, ContaPagar, ChamadoAnexo, ChamadoDevolucao, LogAtividade, Pagamento, MovimentacaoReceita, DebitoCongelado, Material, MovimentacaoEstoque, JornadaTrabalho, RegistroPonto, AbonoPonto, LiberacaoExtraPonto, LicencaSistema, RetiradaMaterial
 from .forms import ClienteForm, ChamadoForm, ContaPagarForm, CTOForm, PlanoForm, UsuarioCreateForm, UsuarioUpdateForm, DebitoCongeladoForm, NegociarDebitoForm, MaterialForm, EntradaEstoqueForm, SaidaEstoqueForm, JornadaForm, PontoLiberarForm, AbonoForm, LiberacaoExtraForm
 from .decorators import somente_operacao, somente_admin
 from .mixins import SomenteAdminMixin, SomenteOperacaoMixin
@@ -778,13 +779,30 @@ def meus_chamados(request):
         .exclude(status__in=["cancelado", "concluido"])
         .select_related("cliente")
     )
+    retiradas_pendentes = (
+        RetiradaMaterial.objects.filter(tecnico=request.user, confirmado=False)
+        .prefetch_related("itens__material")
+        .order_by("-criado_em")
+    )
     context = {
         "chamados": chamados,
         "abertos": chamados.filter(status="aberto").count(),
         "andamento": chamados.filter(status="andamento").count(),
         "concluidos": Chamado.objects.filter(tecnico=request.user, status="concluido").count(),
+        "retiradas_pendentes": retiradas_pendentes,
     }
     return render(request, "core/meus_chamados.html", context)
+
+
+@user_passes_test(_somente_tecnico)
+def retirada_material_confirmar(request, pk):
+    retirada = get_object_or_404(RetiradaMaterial, pk=pk, tecnico=request.user)
+    if request.method == "POST" and not retirada.confirmado:
+        retirada.confirmado = True
+        retirada.confirmado_em = timezone.now()
+        retirada.save(update_fields=["confirmado", "confirmado_em"])
+        messages.success(request, "Recebimento do material confirmado!")
+    return redirect("meus_chamados")
 
 
 @user_passes_test(_somente_tecnico)
@@ -1209,6 +1227,20 @@ def financeiro(request):
         entradas.append(float(entrada_mes))
         saidas.append(float(saida_mes))
 
+    # Recebido por dia do mês selecionado (pra saber quanto entrou em cada dia)
+    import calendar
+    dias_no_mes = calendar.monthrange(ano, mes)[1]
+    pagamentos_do_mes_por_dia = (
+        Pagamento.objects.filter(data_pagamento__year=ano, data_pagamento__month=mes)
+        .values("data_pagamento")
+        .annotate(total=Sum("valor"), qtd=Count("id"))
+    )
+    valores_por_dia = {p["data_pagamento"].day: float(p["total"]) for p in pagamentos_do_mes_por_dia}
+    qtd_por_dia = {p["data_pagamento"].day: p["qtd"] for p in pagamentos_do_mes_por_dia}
+    dias_labels = list(range(1, dias_no_mes + 1))
+    valores_dia = [valores_por_dia.get(d, 0) for d in dias_labels]
+    qtds_dia = [qtd_por_dia.get(d, 0) for d in dias_labels]
+
     context = {
         "clientes_status": clientes_status,
         "mes_ref": mes_ref,
@@ -1238,6 +1270,9 @@ def financeiro(request):
         "percentual_saldo": percentual_saldo,
         "percentual_perdido": percentual_perdido,
         "percentual_novo": percentual_novo,
+        "dias_labels": json.dumps(dias_labels),
+        "valores_dia": json.dumps(valores_dia),
+        "qtds_dia": json.dumps(qtds_dia),
     }
     return render(request, "core/financeiro.html", context)
 
@@ -1535,20 +1570,50 @@ def _dados_relatorios(request):
     if aba_ativa not in abas_validas:
         aba_ativa = "tecnicos"
 
-    # --- 1. Técnicos: quantos chamados cada um atendeu ---
+    # --- 1. Técnicos: tudo relacionado a cada um (chamados, tempo em atendimento, ponto) ---
     tecnicos_qs = User.objects.filter(role="tecnico")
     if tecnico_filtro:
         tecnicos_qs = tecnicos_qs.filter(pk=tecnico_filtro)
+
+    tempo_atendimento_mes = _calcular_tempo_atendimento(ano, mes, tecnico_filtro)
+
+    retiradas_qs = (
+        RetiradaMaterial.objects.filter(criado_em__year=ano, criado_em__month=mes)
+        .select_related("tecnico")
+        .prefetch_related("itens__material")
+        .order_by("-criado_em")
+    )
+    if tecnico_filtro:
+        retiradas_qs = retiradas_qs.filter(tecnico_id=tecnico_filtro)
+    tempo_por_tecnico = {r["pessoa"].pk: r for r in tempo_atendimento_mes["resumo"]}
+
+    primeiro_dia_mes = date(ano, mes, 1)
+    ultimo_dia_mes_tec = (date(ano + (mes // 12), (mes % 12) + 1, 1) - timedelta(days=1)) if mes < 12 else date(ano, 12, 31)
+    hoje_rel = timezone.localdate()
+    fim_ponto = min(ultimo_dia_mes_tec, hoje_rel) if (ano, mes) == (hoje_rel.year, hoje_rel.month) else ultimo_dia_mes_tec
+
     dados_tecnicos = []
     for t in tecnicos_qs:
         chamados_t = Chamado.objects.filter(tecnico=t)
         chamados_mes_t = chamados_t.filter(criado_em__year=ano, criado_em__month=mes)
+
+        horas_trabalhadas = 0.0
+        if fim_ponto >= primeiro_dia_mes:
+            data_p = primeiro_dia_mes
+            while data_p <= fim_ponto:
+                horas_trabalhadas += resumo_ponto_dia(t, data_p)["horas_trabalhadas"]
+                data_p += timedelta(days=1)
+
+        tempo_t = tempo_por_tecnico.get(t.pk)
         dados_tecnicos.append({
             "pessoa": t,
             "concluidos_mes": chamados_mes_t.filter(status="concluido").count(),
             "em_andamento": chamados_t.filter(status="andamento").count(),
             "cancelados": chamados_t.filter(status="cancelado").count(),
             "concluidos_total": chamados_t.filter(status="concluido").count(),
+            "tempo_medio_atendimento": tempo_t["media_fmt"] if tempo_t else "—",
+            "tempo_total_atendimento": tempo_t["total_fmt"] if tempo_t else "—",
+            "horas_ponto_mes": round(horas_trabalhadas, 2),
         })
 
     # --- 2. Operadores: quantos chamados cada um abriu ---
@@ -1621,10 +1686,10 @@ def _dados_relatorios(request):
     # --- 6. Tempo em atendimento: quanto tempo cada técnico ficou na casa do cliente ---
     dados_tempo = _calcular_tempo_atendimento(ano, mes, tecnico_tempo_filtro)
 
-    # --- 7. Estoque de Material: o que mais saiu/comprou e quem mais retirou no mês ---
+    # --- 7. Estoque de Material: o que mais saiu/comprou, quem retirou o quê, e estoque atual ---
     movs_mes = (
         MovimentacaoEstoque.objects.filter(criado_em__year=ano, criado_em__month=mes)
-        .select_related("material", "tecnico")
+        .select_related("material", "tecnico", "registrado_por")
     )
     saidas_por_material = {}
     entradas_por_material = {}
@@ -1634,8 +1699,16 @@ def _dados_relatorios(request):
             item = saidas_por_material.setdefault(mv.material_id, {"material": mv.material, "total": 0})
             item["total"] += mv.quantidade
             if mv.tecnico:
-                pessoa = retiradas_por_pessoa.setdefault(mv.tecnico_id, {"pessoa": mv.tecnico, "qtd": 0})
-                pessoa["qtd"] += 1
+                pessoa = retiradas_por_pessoa.setdefault(
+                    mv.tecnico_id, {"pessoa": mv.tecnico, "materiais": {}, "liberado_por": {}}
+                )
+                mat_item = pessoa["materiais"].setdefault(
+                    mv.material_id, {"material": mv.material, "total": 0}
+                )
+                mat_item["total"] += mv.quantidade
+                if mv.registrado_por:
+                    nome_liberou = mv.registrado_por.get_full_name() or mv.registrado_por.username
+                    pessoa["liberado_por"][nome_liberou] = pessoa["liberado_por"].get(nome_liberou, 0) + 1
         else:
             item = entradas_por_material.setdefault(mv.material_id, {"material": mv.material, "total": 0})
             item["total"] += mv.quantidade
@@ -1652,7 +1725,28 @@ def _dados_relatorios(request):
             item["total"], item["material"].unidade_medida, item["material"].get_unidade_medida_display()
         )
 
-    ranking_retiradas_pessoa = sorted(retiradas_por_pessoa.values(), key=lambda x: x["qtd"], reverse=True)
+    ranking_retiradas_pessoa = sorted(
+        retiradas_por_pessoa.values(), key=lambda x: sum(m["total"] for m in x["materiais"].values()), reverse=True
+    )
+    for pessoa_item in ranking_retiradas_pessoa:
+        materiais_ordenados = sorted(pessoa_item["materiais"].values(), key=lambda x: x["total"], reverse=True)
+        for m in materiais_ordenados:
+            m["total_fmt"] = formatar_quantidade_material(
+                m["total"], m["material"].unidade_medida, m["material"].get_unidade_medida_display()
+            )
+        pessoa_item["materiais_lista"] = materiais_ordenados
+        pessoa_item["liberado_por_lista"] = sorted(
+            pessoa_item["liberado_por"].items(), key=lambda x: x[1], reverse=True
+        )
+
+    estoque_atual = [
+        {
+            "material": m,
+            "saldo_fmt": formatar_quantidade_material(m.saldo_atual(), m.unidade_medida, m.get_unidade_medida_display()),
+            "baixo": m.estoque_baixo(),
+        }
+        for m in Material.objects.filter(ativo=True).order_by("nome")
+    ]
 
     # --- 8. Contas a Pagar do mês (+ Débitos Congelados e Contas Pagas) ---
     garantir_contas_recorrentes(ano, mes)
@@ -1697,6 +1791,11 @@ def _dados_relatorios(request):
         "tecnico_filtro": tecnico_filtro,
         "operador_filtro": operador_filtro,
         "dados_tecnicos": dados_tecnicos,
+        "total_chamados_tempo_tec": tempo_atendimento_mes["total_chamados"],
+        "total_geral_tempo_tec_fmt": tempo_atendimento_mes["total_geral_fmt"],
+        "resumo_tempo_tec": tempo_atendimento_mes["resumo"],
+        "detalhado_tempo_tec": tempo_atendimento_mes["detalhado"],
+        "retiradas_material_mes": retiradas_qs,
         "dados_operadores": dados_operadores,
         "total_chamados_mes": total_chamados_mes,
         "por_tipo": por_tipo,
@@ -1721,6 +1820,7 @@ def _dados_relatorios(request):
         "ranking_saidas_material": ranking_saidas_material,
         "ranking_entradas_material": ranking_entradas_material,
         "ranking_retiradas_pessoa": ranking_retiradas_pessoa,
+        "estoque_atual": estoque_atual,
         "contas_pagar_mes": contas_pagar_mes,
         "total_pagar_mes": total_pagar_mes,
         "total_pago_mes": total_pago_mes,
@@ -1773,13 +1873,45 @@ def relatorios_pdf(request):
 
     if aba == "tecnicos":
         titulo(f"Relatório de Técnicos - {titulo_periodo}")
-        linhas = [["Técnico", "Concluídos no mês", "Em andamento (agora)", "Cancelados (total)", "Concluídos (histórico)"]]
+        linhas = [["Técnico", "Concluídos no mês", "Em andamento", "Cancelados", "Horas de ponto"]]
         for d in dados["dados_tecnicos"]:
             linhas.append([
                 d["pessoa"].get_full_name() or d["pessoa"].username,
-                str(d["concluidos_mes"]), str(d["em_andamento"]), str(d["cancelados"]), str(d["concluidos_total"]),
+                str(d["concluidos_mes"]), str(d["em_andamento"]), str(d["cancelados"]), f'{d["horas_ponto_mes"]}h',
             ])
         tabela(linhas)
+
+        elementos.append(Spacer(1, 14))
+        elementos.append(Paragraph("Detalhado por atendimento", estilos["Heading3"]))
+        linhas_det = [["Cliente", "Técnico", "Tipo", "Iniciado", "Concluído", "Duração"]]
+        for item in dados["detalhado_tempo_tec"]:
+            c = item["chamado"]
+            linhas_det.append([
+                c.cliente.nome,
+                (c.tecnico.get_full_name() or c.tecnico.username) if c.tecnico else "—",
+                c.get_tipo_display(),
+                c.atendimento_iniciado_em.strftime("%d/%m %H:%M") if c.atendimento_iniciado_em else "—",
+                c.concluido_em.strftime("%d/%m %H:%M") if c.concluido_em else "—",
+                item["duracao_fmt"],
+            ])
+        if len(linhas_det) == 1:
+            linhas_det.append(["Nenhum atendimento com tempo registrado nesse mês.", "—", "—", "—", "—", "—"])
+        tabela(linhas_det)
+
+        elementos.append(Spacer(1, 14))
+        elementos.append(Paragraph("Materiais retirados no mês", estilos["Heading3"]))
+        linhas_mat = [["Data", "Técnico", "Materiais", "Confirmado?"]]
+        for r in dados["retiradas_material_mes"]:
+            materiais_txt = ", ".join(f"{i.quantidade_exibicao()} de {i.material.nome}" for i in r.itens.all())
+            linhas_mat.append([
+                r.criado_em.strftime("%d/%m/%Y %H:%M"),
+                r.tecnico.get_full_name() or r.tecnico.username,
+                materiais_txt or "—",
+                f"Sim, {r.confirmado_em.strftime('%d/%m %H:%M')}" if r.confirmado else "Pendente",
+            ])
+        if len(linhas_mat) == 1:
+            linhas_mat.append(["Nenhuma retirada de material nesse período.", "—", "—", "—"])
+        tabela(linhas_mat)
 
     elif aba == "operadores":
         titulo(f"Relatório de Operadores - {titulo_periodo}")
@@ -1838,10 +1970,26 @@ def relatorios_pdf(request):
         for i, item in enumerate(dados["ranking_entradas_material"], 1):
             linhas.append([str(i), item["material"].nome, item["total_fmt"]])
         tabela(linhas)
-        subtitulo("Quem mais retirou material")
-        linhas = [["#", "Pessoa", "Retiradas no mês"]]
-        for i, item in enumerate(dados["ranking_retiradas_pessoa"], 1):
-            linhas.append([str(i), item["pessoa"].get_full_name() or item["pessoa"].username, str(item["qtd"])])
+        subtitulo("Quem retirou o quê, no mês")
+        linhas = [["Pessoa", "Materiais retirados (quantidade acumulada)", "Liberado por"]]
+        for item in dados["ranking_retiradas_pessoa"]:
+            materiais_txt = "; ".join(f"{m['material'].nome}: {m['total_fmt']}" for m in item["materiais_lista"])
+            liberou_txt = ", ".join(f"{nome} ({qtd}x)" for nome, qtd in item["liberado_por_lista"])
+            linhas.append([
+                item["pessoa"].get_full_name() or item["pessoa"].username,
+                materiais_txt or "—", liberou_txt or "—",
+            ])
+        if len(linhas) == 1:
+            linhas.append(["Nenhuma retirada registrada nesse mês.", "—", "—"])
+        tabela(linhas)
+
+        elementos.append(Spacer(1, 14))
+        subtitulo("Estoque atual (todos os materiais ativos)")
+        linhas = [["Material", "Saldo atual"]]
+        for e in dados["estoque_atual"]:
+            linhas.append([e["material"].nome + (" (baixo!)" if e["baixo"] else ""), e["saldo_fmt"]])
+        if len(linhas) == 1:
+            linhas.append(["Nenhum material cadastrado.", "—"])
         tabela(linhas)
 
     elif aba == "contas":
@@ -2077,27 +2225,79 @@ def estoque_entrada(request):
 
 @somente_operacao
 def estoque_saida(request):
+    tecnicos = User.objects.filter(role__in=["tecnico", "admin"]).order_by("first_name", "username")
+    materiais = Material.objects.filter(ativo=True).order_by("nome")
+
     if request.method == "POST":
-        form = SaidaEstoqueForm(request.POST)
-        if form.is_valid():
-            material = form.cleaned_data["material"]
-            quantidade = form.cleaned_data["quantidade"]
-            MovimentacaoEstoque.objects.create(
-                material=material, tipo="saida", quantidade=quantidade,
-                tecnico=form.cleaned_data.get("tecnico"),
-                observacao=form.cleaned_data["observacao"], registrado_por=request.user,
-            )
-            tecnico = form.cleaned_data.get("tecnico")
-            destino = f" para {tecnico.get_full_name() or tecnico.username}" if tecnico else ""
-            messages.success(
-                request,
-                f"Retirada registrada: -{quantidade} {material.get_unidade_medida_display()} de "
-                f"\"{material.nome}\"{destino}. Saldo atual: {material.saldo_atual()}.",
-            )
-            return redirect("material_list")
-    else:
-        form = SaidaEstoqueForm()
-    return render(request, "core/estoque_saida_form.html", {"form": form})
+        try:
+            itens = json.loads(request.POST.get("itens_json", "[]"))
+        except (TypeError, ValueError):
+            itens = []
+        tecnico_id = request.POST.get("tecnico")
+        observacao = request.POST.get("observacao", "").strip()
+
+        if not itens:
+            messages.error(request, "Adiciona pelo menos um material à lista antes de confirmar a retirada.")
+        elif not tecnico_id:
+            messages.error(request, "Escolhe pra quem o material está sendo liberado.")
+        else:
+            tecnico = get_object_or_404(User, pk=tecnico_id)
+            erros = []
+            itens_validos = []
+            for item in itens:
+                try:
+                    material = Material.objects.get(pk=item.get("material_id"), ativo=True)
+                    quantidade = Decimal(str(item.get("quantidade")))
+                except (Material.DoesNotExist, InvalidOperation, TypeError, ValueError):
+                    continue
+                if quantidade <= 0:
+                    continue
+                if quantidade > material.saldo_atual():
+                    erros.append(
+                        f"Estoque insuficiente de \"{material.nome}\" — só tem {material.saldo_atual()} "
+                        f"{material.get_unidade_medida_display()} disponível."
+                    )
+                    continue
+                itens_validos.append((material, quantidade))
+
+            if erros:
+                for e in erros:
+                    messages.error(request, e)
+            elif not itens_validos:
+                messages.error(request, "Nenhum item válido pra registrar.")
+            else:
+                eh_admin = tecnico.role == "admin"
+                retirada = RetiradaMaterial.objects.create(
+                    tecnico=tecnico, registrado_por=request.user, observacao=observacao,
+                    confirmado=eh_admin, confirmado_em=timezone.now() if eh_admin else None,
+                )
+                for material, quantidade in itens_validos:
+                    MovimentacaoEstoque.objects.create(
+                        material=material, tipo="saida", quantidade=quantidade,
+                        tecnico=tecnico, observacao=observacao, registrado_por=request.user,
+                        retirada=retirada,
+                    )
+                if eh_admin:
+                    mensagem_confirmacao = "Como é uma conta de administrador, não precisa de confirmação."
+                else:
+                    mensagem_confirmacao = "A pessoa já pode confirmar o recebimento na tela dela."
+                messages.success(
+                    request,
+                    f"Retirada registrada com {len(itens_validos)} item(ns) para "
+                    f"{tecnico.get_full_name() or tecnico.username}. {mensagem_confirmacao}",
+                )
+                return redirect("material_list")
+
+    materiais_json = json.dumps([
+        {
+            "id": m.id, "nome": m.nome, "unidade": m.get_unidade_medida_display(),
+            "saldo": float(m.saldo_atual()),
+        }
+        for m in materiais
+    ])
+    return render(request, "core/estoque_saida_form.html", {
+        "materiais": materiais, "tecnicos": tecnicos, "materiais_json": materiais_json,
+    })
 
 
 @somente_operacao

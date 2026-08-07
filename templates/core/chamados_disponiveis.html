@@ -15,6 +15,7 @@
         {% elif c.prioridade == "media" %}<span class="badge bg-dark ms-1">Média</span>
         {% else %}<span class="badge bg-dark ms-1">Baixa</span>{% endif %}
         {% if c.eh_retorno %}<span class="badge bg-white text-dark border border-dark ms-1"><i class="bi bi-arrow-repeat"></i> Retorno</span>{% endif %}
+        {% if c.dias_sem_suporte > 0 %}<span class="badge {% if c.dias_sem_suporte >= 2 %}bg-danger{% else %}bg-warning text-dark{% endif %} ms-1"><i class="bi bi-clock-history"></i> Há {{ c.dias_sem_suporte }} dia{{ c.dias_sem_suporte|pluralize }} sem suporte</span>{% endif %}
       </div>
       <div class="text-muted small"><i class="bi bi-geo-alt"></i> {{ c.cliente.endereco_completo }}</div>
       <div class="text-muted small">login - {{ c.cliente.login_pppoe|default:"—" }}</div>

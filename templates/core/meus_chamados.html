@@ -10,6 +10,29 @@
   <div class="col-4"><div class="kpi-card" style="background:#059669;"><div class="rotulo">Concluídos (total)</div><div class="valor">{{ concluidos }}</div></div></div>
 </div>
 
+{% if retiradas_pendentes %}
+<div class="mb-4">
+  <h6 class="text-muted mb-2"><i class="bi bi-box-seam"></i> Material liberado pra você — confirma o recebimento</h6>
+  {% for r in retiradas_pendentes %}
+  <div class="card p-3 mb-2" style="border-left:4px solid #d97706;">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div>
+        <div class="small text-muted mb-1">{{ r.criado_em|date:"d/m/Y H:i" }}</div>
+        {% for item in r.itens.all %}
+        <div>{{ item.quantidade_exibicao }} de <strong>{{ item.material.nome }}</strong></div>
+        {% endfor %}
+        {% if r.observacao %}<div class="small text-muted mt-1">Obs: {{ r.observacao }}</div>{% endif %}
+      </div>
+      <form method="post" action="{% url 'retirada_material_confirmar' r.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-success"><i class="bi bi-check-lg"></i> Confirmar recebimento</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 {% if not chamados %}
 <p class="text-muted">Você não tem nenhum chamado ativo agora. Vá em "Chamados Disponíveis" pra pegar um.</p>
 {% endif %}
@@ -23,6 +46,7 @@
         {% if c.prioridade == "extrema" %}Extrema{% elif c.prioridade == "alta" %}Alta{% elif c.prioridade == "media" %}Média{% else %}Baixa{% endif %}
       </span>
       {% if c.eh_retorno %}<span class="badge bg-white text-dark border border-dark ms-1"><i class="bi bi-arrow-repeat"></i> Retorno</span>{% endif %}
+      {% if c.dias_sem_suporte > 0 %}<span class="badge {% if c.dias_sem_suporte >= 2 %}bg-danger{% else %}bg-warning text-dark{% endif %} ms-1"><i class="bi bi-clock-history"></i> Há {{ c.dias_sem_suporte }} dia{{ c.dias_sem_suporte|pluralize }} sem suporte</span>{% endif %}
     </div>
     <span class="chamado-status-pill {% if c.status == 'aberto' %}aberto{% endif %}">
       <i class="bi bi-circle-fill"></i> {% if c.status == "aberto" %}Aberto{% else %}Em andamento{% endif %}
@@ -37,8 +61,8 @@
       <div class="chamado-info-linha">
         <i class="bi bi-telephone-fill"></i> Telefone: {{ c.cliente.telefone|default:"—" }}
         {% if c.cliente.telefone %}
-        <a href="https://wa.me/{{ c.cliente.telefone_whatsapp }}" target="_blank" style="color:inherit;" title="Abrir no WhatsApp"><i class="bi bi-whatsapp"></i></a>
-        <a href="tel:{{ c.cliente.telefone_digitos }}" style="color:inherit;" title="Ligar"><i class="bi bi-telephone-fill"></i></a>
+        <a href="https://wa.me/{{ c.cliente.telefone_whatsapp }}" target="_blank" style="color:inherit;font-size:1.4em;" title="Abrir no WhatsApp"><i class="bi bi-whatsapp"></i></a>
+        <a href="tel:{{ c.cliente.telefone_digitos }}" style="color:inherit;font-size:1.4em;" title="Ligar"><i class="bi bi-telephone-fill"></i></a>
         {% endif %}
       </div>
       <div class="chamado-info-linha"><i class="bi bi-tag-fill"></i> {{ c.get_tipo_display }}: aberto em {{ c.criado_em|date:"d/m H:i" }}</div>

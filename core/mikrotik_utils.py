@@ -49,7 +49,7 @@ def testar_conexao():
 
 
 def _nome_profile(plano):
-    return f"cto-{plano.id}-{int(plano.velocidade_mb)}m"
+    return f"plano-{plano.id}-{int(plano.velocidade_mb)}mega"
 
 
 def _garantir_profile(api, plano):

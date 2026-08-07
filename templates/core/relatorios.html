@@ -12,16 +12,23 @@
   </select>
 </form>
 
+<style>
+#pills-relatorios .nav-link {
+  background-color: #60a5fa; color: #fff; margin-right: 6px; margin-bottom: 6px;
+}
+#pills-relatorios .nav-link.active, #pills-relatorios .nav-link:hover {
+  background-color: #1d4ed8; color: #fff;
+}
+</style>
 <ul class="nav nav-pills mb-3" id="pills-relatorios">
-  <li class="nav-item"><a class="nav-link {% if aba_ativa == 'tecnicos' %}active{% endif %}" data-bs-toggle="pill" href="#tecnicos">Técnicos</a></li>
-  <li class="nav-item"><a class="nav-link {% if aba_ativa == 'operadores' %}active{% endif %}" data-bs-toggle="pill" href="#operadores">Operadores</a></li>
+  <li class="nav-item"><a class="nav-link {% if aba_ativa == 'auditoria' %}active{% endif %}" data-bs-toggle="pill" href="#auditoria">Auditoria</a></li>
   <li class="nav-item"><a class="nav-link {% if aba_ativa == 'chamados' %}active{% endif %}" data-bs-toggle="pill" href="#chamados">Chamados do Mês</a></li>
   <li class="nav-item"><a class="nav-link {% if aba_ativa == 'clientes' %}active{% endif %}" data-bs-toggle="pill" href="#clientes">Clientes</a></li>
-  <li class="nav-item"><a class="nav-link {% if aba_ativa == 'crescimento' %}active{% endif %}" data-bs-toggle="pill" href="#crescimento">Financeiro / Crescimento</a></li>
-  <li class="nav-item"><a class="nav-link {% if aba_ativa == 'tempo-atendimento' %}active{% endif %}" data-bs-toggle="pill" href="#tempo-atendimento">Tempo em Atendimento</a></li>
-  <li class="nav-item"><a class="nav-link {% if aba_ativa == 'estoque' %}active{% endif %}" data-bs-toggle="pill" href="#estoque">Estoque de Material</a></li>
   <li class="nav-item"><a class="nav-link {% if aba_ativa == 'contas' %}active{% endif %}" data-bs-toggle="pill" href="#contas">Contas a Pagar</a></li>
-  <li class="nav-item"><a class="nav-link {% if aba_ativa == 'auditoria' %}active{% endif %}" data-bs-toggle="pill" href="#auditoria">Auditoria</a></li>
+  <li class="nav-item"><a class="nav-link {% if aba_ativa == 'estoque' %}active{% endif %}" data-bs-toggle="pill" href="#estoque">Estoque de Material</a></li>
+  <li class="nav-item"><a class="nav-link {% if aba_ativa == 'crescimento' %}active{% endif %}" data-bs-toggle="pill" href="#crescimento">Financeiro / Crescimento</a></li>
+  <li class="nav-item"><a class="nav-link {% if aba_ativa == 'operadores' %}active{% endif %}" data-bs-toggle="pill" href="#operadores">Operadores</a></li>
+  <li class="nav-item"><a class="nav-link {% if aba_ativa == 'tecnicos' %}active{% endif %}" data-bs-toggle="pill" href="#tecnicos">Técnicos</a></li>
 </ul>
 
 <div class="tab-content">
@@ -41,7 +48,7 @@
     </div>
     <div class="card">
       <table class="table mb-0 align-middle">
-        <thead class="table-light"><tr><th>Técnico</th><th class="text-center">Concluídos no mês</th><th class="text-center">Em andamento (agora)</th><th class="text-center">Cancelados (total)</th><th class="text-center">Concluídos (histórico)</th></tr></thead>
+        <thead class="table-light"><tr><th>Técnico</th><th class="text-center">Concluídos no mês</th><th class="text-center">Em andamento (agora)</th><th class="text-center">Cancelados (total)</th><th class="text-center">Horas de ponto no mês</th></tr></thead>
         <tbody>
           {% for d in dados_tecnicos %}
           <tr>
@@ -49,9 +56,106 @@
             <td class="text-center"><span class="badge bg-success fs-6">{{ d.concluidos_mes }}</span></td>
             <td class="text-center"><span class="badge bg-warning text-dark">{{ d.em_andamento }}</span></td>
             <td class="text-center"><span class="badge bg-secondary">{{ d.cancelados }}</span></td>
-            <td class="text-center text-muted">{{ d.concluidos_total }}</td>
+            <td class="text-center text-muted">{{ d.horas_ponto_mes }}h</td>
           </tr>
           {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">Nenhum técnico cadastrado.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <hr class="my-4">
+
+    <div class="row mb-3">
+      <div class="col-auto">
+        <div class="card px-3 py-2">
+          <span class="text-muted small">Atendimentos no mês</span>
+          <span class="fs-4 fw-semibold">{{ total_chamados_tempo_tec }}</span>
+        </div>
+      </div>
+      <div class="col-auto">
+        <div class="card px-3 py-2">
+          <span class="text-muted small">Tempo total somado</span>
+          <span class="fs-4 fw-semibold">{{ total_geral_tempo_tec_fmt }}</span>
+        </div>
+      </div>
+    </div>
+
+    <h6 class="text-muted mb-2">Resumo por técnico</h6>
+    <div class="card mb-4">
+      <table class="table mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Técnico</th>
+            <th class="text-center">Atendimentos</th>
+            <th class="text-center">Tempo total</th>
+            <th class="text-center">Tempo médio</th>
+            <th class="text-center">Mais rápido</th>
+            <th class="text-center">Mais demorado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in resumo_tempo_tec %}
+          <tr>
+            <td>{{ r.pessoa.get_full_name|default:r.pessoa.username }}</td>
+            <td class="text-center">{{ r.qtd }}</td>
+            <td class="text-center"><span class="badge bg-primary-subtle text-primary">{{ r.total_fmt }}</span></td>
+            <td class="text-center">{{ r.media_fmt }}</td>
+            <td class="text-center text-success">{{ r.minimo_fmt }}</td>
+            <td class="text-center text-danger">{{ r.maximo_fmt }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center text-muted py-4">Nenhum atendimento com tempo registrado nesse mês.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h6 class="text-muted mb-2">Detalhado por atendimento</h6>
+    <div class="card">
+      <table class="table mb-0 align-middle">
+        <thead class="table-light">
+          <tr><th>Cliente</th><th>Técnico</th><th>Tipo</th><th>Iniciado</th><th>Concluído</th><th>Duração</th></tr>
+        </thead>
+        <tbody>
+          {% for item in detalhado_tempo_tec %}
+          <tr>
+            <td>{{ item.chamado.cliente.nome }}</td>
+            <td>{% if item.chamado.tecnico %}{{ item.chamado.tecnico.get_full_name|default:item.chamado.tecnico.username }}{% else %}—{% endif %}</td>
+            <td>{{ item.chamado.get_tipo_display }}</td>
+            <td class="text-muted small">{{ item.chamado.atendimento_iniciado_em|date:"d/m H:i"|default:"—" }}</td>
+            <td class="text-muted small">{{ item.chamado.concluido_em|date:"d/m H:i" }}</td>
+            <td><span class="badge bg-success-subtle text-success">{{ item.duracao_fmt }}</span></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center text-muted py-4">Nenhum atendimento com tempo registrado nesse mês.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <hr class="my-4">
+    <h6 class="text-muted mb-2">Materiais retirados no mês (por dia)</h6>
+    <div class="card">
+      <table class="table mb-0 align-middle">
+        <thead class="table-light"><tr><th>Data</th><th>Técnico</th><th>Materiais retirados</th><th class="text-center">Confirmado pelo técnico?</th></tr></thead>
+        <tbody>
+          {% for r in retiradas_material_mes %}
+          <tr>
+            <td class="text-muted small text-nowrap">{{ r.criado_em|date:"d/m/Y H:i" }}</td>
+            <td>{{ r.tecnico.get_full_name|default:r.tecnico.username }}</td>
+            <td>
+              {% for item in r.itens.all %}
+              <div class="small">{{ item.quantidade_exibicao }} de {{ item.material.nome }}</div>
+              {% endfor %}
+            </td>
+            <td class="text-center">
+              {% if r.confirmado %}<span class="badge bg-success">Sim, em {{ r.confirmado_em|date:"d/m H:i" }}</span>
+              {% else %}<span class="badge bg-warning text-dark">Pendente</span>{% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="text-center text-muted py-4">Nenhuma retirada de material nesse período.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -169,89 +273,6 @@
       <canvas id="graficoTendencia" height="80"></canvas>
     </div>
   </div>
-  {# ---------------- TEMPO EM ATENDIMENTO ---------------- #}
-  <div class="tab-pane fade {% if aba_ativa == 'tempo-atendimento' %}show active{% endif %}" id="tempo-atendimento">
-    <form class="d-flex flex-wrap gap-2 mb-3" method="get">
-      <input type="hidden" name="mes" value="{{ mes }}"><input type="hidden" name="ano" value="{{ ano }}">
-      <input type="hidden" name="aba" value="tempo-atendimento">
-      <select name="tecnico_tempo" class="form-select" style="max-width:220px;" onchange="this.form.submit()">
-        <option value="">Todos os técnicos</option>
-        {% for t in tecnicos_todos %}<option value="{{ t.id }}" {% if tecnico_tempo_filtro == t.id|stringformat:"s" %}selected{% endif %}>{{ t.get_full_name|default:t.username }}</option>{% endfor %}
-      </select>
-      <a class="btn btn-outline-primary ms-auto"
-         href="{% url 'relatorio_tempo_atendimento_pdf' %}?mes={{ mes }}&ano={{ ano }}&tecnico={{ tecnico_tempo_filtro }}">
-        <i class="bi bi-file-earmark-pdf"></i> Baixar PDF
-      </a>
-    </form>
-
-    <div class="row mb-3">
-      <div class="col-auto">
-        <div class="card px-3 py-2">
-          <span class="text-muted small">Atendimentos no mês</span>
-          <span class="fs-4 fw-semibold">{{ total_chamados_tempo }}</span>
-        </div>
-      </div>
-      <div class="col-auto">
-        <div class="card px-3 py-2">
-          <span class="text-muted small">Tempo total somado</span>
-          <span class="fs-4 fw-semibold">{{ total_geral_tempo_fmt }}</span>
-        </div>
-      </div>
-    </div>
-
-    <h6 class="text-muted mb-2">Resumo por técnico</h6>
-    <div class="card mb-4">
-      <table class="table mb-0 align-middle">
-        <thead class="table-light">
-          <tr>
-            <th>Técnico</th>
-            <th class="text-center">Atendimentos</th>
-            <th class="text-center">Tempo total</th>
-            <th class="text-center">Tempo médio</th>
-            <th class="text-center">Mais rápido</th>
-            <th class="text-center">Mais demorado</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in resumo_tempo %}
-          <tr>
-            <td>{{ r.pessoa.get_full_name|default:r.pessoa.username }}</td>
-            <td class="text-center">{{ r.qtd }}</td>
-            <td class="text-center"><span class="badge bg-primary-subtle text-primary">{{ r.total_fmt }}</span></td>
-            <td class="text-center">{{ r.media_fmt }}</td>
-            <td class="text-center text-success">{{ r.minimo_fmt }}</td>
-            <td class="text-center text-danger">{{ r.maximo_fmt }}</td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="6" class="text-center text-muted py-4">Nenhum atendimento com tempo registrado nesse mês.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-
-    <h6 class="text-muted mb-2">Detalhado por atendimento</h6>
-    <div class="card">
-      <table class="table mb-0 align-middle">
-        <thead class="table-light">
-          <tr><th>Cliente</th><th>Técnico</th><th>Tipo</th><th>Iniciado</th><th>Concluído</th><th>Duração</th></tr>
-        </thead>
-        <tbody>
-          {% for item in detalhado_tempo %}
-          <tr>
-            <td>{{ item.chamado.cliente.nome }}</td>
-            <td>{% if item.chamado.tecnico %}{{ item.chamado.tecnico.get_full_name|default:item.chamado.tecnico.username }}{% else %}—{% endif %}</td>
-            <td>{{ item.chamado.get_tipo_display }}</td>
-            <td class="text-muted small">{{ item.chamado.atendimento_iniciado_em|date:"d/m H:i"|default:"—" }}</td>
-            <td class="text-muted small">{{ item.chamado.concluido_em|date:"d/m H:i" }}</td>
-            <td><span class="badge bg-success-subtle text-success">{{ item.duracao_fmt }}</span></td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="6" class="text-center text-muted py-4">Nenhum atendimento com tempo registrado nesse mês.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
 
   {# ---------------- ESTOQUE DE MATERIAL ---------------- #}
   <div class="tab-pane fade {% if aba_ativa == 'estoque' %}show active{% endif %}" id="estoque">
@@ -300,19 +321,42 @@
       </div>
     </div>
 
-    <h6 class="text-muted mb-2">Quem mais retirou material (técnico ou administrador)</h6>
+    <h6 class="text-muted mb-2">Quem retirou o quê, no mês (quantidade acumulada por material)</h6>
+    {% for item in ranking_retiradas_pessoa %}
+    <div class="card p-3 mb-2">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+        <div class="fw-semibold">{{ item.pessoa.get_full_name|default:item.pessoa.username }} <span class="badge bg-secondary">{{ item.pessoa.get_role_display }}</span></div>
+        {% if item.liberado_por_lista %}
+        <div class="text-muted small">
+          Liberado por:
+          {% for nome, qtd in item.liberado_por_lista %}{{ nome }} ({{ qtd }}x){% if not forloop.last %}, {% endif %}{% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      <div class="row g-2">
+        {% for m in item.materiais_lista %}
+        <div class="col-auto">
+          <span class="badge bg-primary-subtle text-primary fs-6">{{ m.material.nome }}: {{ m.total_fmt }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% empty %}
+    <p class="text-muted text-center py-3">Nenhuma retirada registrada nesse mês.</p>
+    {% endfor %}
+
+    <h6 class="text-muted mb-2 mt-4">Estoque atual (todos os materiais ativos)</h6>
     <div class="card">
       <table class="table table-sm mb-0">
-        <thead class="table-light"><tr><th>#</th><th>Pessoa</th><th class="text-end">Retiradas no mês</th></tr></thead>
+        <thead class="table-light"><tr><th>Material</th><th class="text-end">Saldo atual</th></tr></thead>
         <tbody>
-          {% for item in ranking_retiradas_pessoa %}
-          <tr>
-            <td class="text-muted">{{ forloop.counter }}</td>
-            <td>{{ item.pessoa.get_full_name|default:item.pessoa.username }} <span class="badge bg-secondary">{{ item.pessoa.get_role_display }}</span></td>
-            <td class="text-end fw-semibold">{{ item.qtd }}</td>
+          {% for e in estoque_atual %}
+          <tr {% if e.baixo %}class="table-danger"{% endif %}>
+            <td>{{ e.material.nome }} {% if e.baixo %}<i class="bi bi-exclamation-triangle-fill text-danger" title="Estoque baixo"></i>{% endif %}</td>
+            <td class="text-end">{{ e.saldo_fmt }}</td>
           </tr>
           {% empty %}
-          <tr><td colspan="3" class="text-center text-muted py-3">Nenhuma retirada registrada nesse mês.</td></tr>
+          <tr><td colspan="2" class="text-center text-muted py-3">Nenhum material cadastrado.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -439,7 +483,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script>
 function submitFormMesRel() {
-  const painelAtivo = document.querySelector("#tempo-atendimento.tab-pane.show.active, #tecnicos.tab-pane.show.active, #operadores.tab-pane.show.active, #chamados.tab-pane.show.active, #clientes.tab-pane.show.active, #crescimento.tab-pane.show.active, #estoque.tab-pane.show.active, #contas.tab-pane.show.active, #auditoria.tab-pane.show.active");
+  const painelAtivo = document.querySelector("#tecnicos.tab-pane.show.active, #operadores.tab-pane.show.active, #chamados.tab-pane.show.active, #clientes.tab-pane.show.active, #crescimento.tab-pane.show.active, #estoque.tab-pane.show.active, #contas.tab-pane.show.active, #auditoria.tab-pane.show.active");
   document.getElementById("aba-input-mes").value = painelAtivo ? painelAtivo.id : "tecnicos";
   document.getElementById("form-mes-rel").submit();
 }
