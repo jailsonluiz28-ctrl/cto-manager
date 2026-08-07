@@ -369,7 +369,7 @@ def configuracao_empresa_editar(request):
     if request.method == "POST":
         if request.POST.get("acao") == "restaurar_padrao":
             config.logo = None
-            config.cor_primaria = "#2563eb"
+            config.cor_primaria = "#1e3a8a"
             config.save()
             messages.success(request, "Logo e cor voltaram ao padrão original.")
             return redirect("configuracao_empresa_editar")
@@ -380,7 +380,7 @@ def configuracao_empresa_editar(request):
             numero = "55" + numero
         config.whatsapp_numero = numero
         config.mensagem_boas_vindas = request.POST.get("mensagem_boas_vindas", "").strip()
-        config.cor_primaria = request.POST.get("cor_primaria", "#2563eb").strip() or "#2563eb"
+        config.cor_primaria = request.POST.get("cor_primaria", "#1e3a8a").strip() or "#1e3a8a"
         if request.FILES.get("logo"):
             config.logo = request.FILES["logo"]
         if request.POST.get("remover_logo") == "on":

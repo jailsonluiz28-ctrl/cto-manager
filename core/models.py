@@ -706,8 +706,8 @@ class ConfiguracaoEmpresa(models.Model):
         help_text="Substitui o ícone/nome padrão no menu do sistema e no Portal do Cliente",
     )
     cor_primaria = models.CharField(
-        max_length=7, default="#2563eb",
-        help_text="Cor principal do sistema (botões, destaque do menu). Formato: #2563eb",
+        max_length=7, default="#1e3a8a",
+        help_text="Cor principal do sistema (botões, destaque do menu). Formato: #1e3a8a",
     )
     atualizado_em = models.DateTimeField(auto_now=True)
 

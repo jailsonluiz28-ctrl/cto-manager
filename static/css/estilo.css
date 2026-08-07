@@ -7,8 +7,8 @@ body { background-color: #f8f9fa; }
   background-color: #0f172a;
 }
 .logo-icone {
-  width: 34px; height: 34px; border-radius: 8px;
-  background-color: #2563eb; color: #fff;
+  width: 44px; height: 44px; border-radius: 11px;
+  background: #1e3a8a; border: none;
   display: flex; align-items: center; justify-content: center;
 }
 .menu-secao { font-size: 10px; font-weight: 700; color: #64748b; letter-spacing: .5px; margin: 8px 0 4px 8px; }
@@ -18,7 +18,7 @@ body { background-color: #f8f9fa; }
   color: #94a3b8; text-decoration: none; font-size: 14px; font-weight: 500;
 }
 .menu-link:hover { background-color: #1e293b; color: #e2e8f0; }
-.menu-link.active { background-color: #2563eb; color: #fff; }
+.menu-link.active { background-color: #1e3a8a; color: #fff; }
 .conteudo { min-height: 100vh; min-width: 0; overflow-x: auto; }
 
 /* --- Menu mobile (celular/tablet) --- */
